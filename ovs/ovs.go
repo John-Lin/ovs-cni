@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net"
 	"runtime"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -14,7 +12,6 @@ import (
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ipam"
 	"github.com/containernetworking/plugins/pkg/ns"
-	"github.com/j-keck/arping"
 	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
@@ -38,7 +35,7 @@ func init() {
 
 func loadNetConf(bytes []byte) (*NetConf, string, error) {
 	n := &NetConf{
-		BrName: defaultBrName,
+		OVSBrName: defaultBrName,
 	}
 	if err := json.Unmarshal(bytes, n); err != nil {
 		return nil, "", fmt.Errorf("failed to load netconf: %v", err)
@@ -62,17 +59,13 @@ func ensureBridge(brName string) (*netlink.Bridge, error) {
 	ovsbr, err := NewOVSSwitch(brName)
 	if err != nil {
 		log.Fatal("failed to NewOVSSwitch: ", err)
-		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.BrName, err)
+		return nil, fmt.Errorf("failed to create bridge %q: %v", brName, err)
 	}
 
 	// Re-fetch link to read all attributes and if it already existed,
 	// ensure it's really a bridge with similar configuration
-	br, err = bridgeByName(brName)
+	br, err := bridgeByName(brName)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := netlink.LinkSetUp(br); err != nil {
 		return nil, err
 	}
 
@@ -111,11 +104,6 @@ func setupVeth(netns ns.NetNS, br *netlink.Bridge, ifName string, mtu int, hairp
 		return nil, nil, fmt.Errorf("failed to connect %q to bridge %v: %v", hostVeth.Attrs().Name, br.Attrs().Name, err)
 	}
 
-	// set hairpin mode
-	if err = netlink.LinkSetHairpin(hostVeth, hairpinMode); err != nil {
-		return nil, nil, fmt.Errorf("failed to setup hairpin mode for %v: %v", hostVeth.Attrs().Name, err)
-	}
-
 	return hostIface, contIface, nil
 }
 
@@ -123,7 +111,7 @@ func setupBridge(n *NetConf) (*netlink.Bridge, *current.Interface, error) {
 	// create bridge if necessary
 	br, err := ensureBridge(n.OVSBrName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.BrName, err)
+		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.OVSBrName, err)
 	}
 
 	return br, &current.Interface{
@@ -148,69 +136,58 @@ func cmdAdd(args *skel.CmdArgs) error {
 	}
 	defer netns.Close()
 
-	hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, n.MTU, n.HairpinMode)
-	if err != nil {
-		return err
-	}
+	_ = netns
+	_ = br
+	_ = brInterface
 
-	// run the IPAM plugin and get back the config to apply
-	r, err := ipam.ExecAdd(n.IPAM.Type, args.StdinData)
-	if err != nil {
-		return err
-	}
-
-	// Convert whatever the IPAM result was into the current Result type
-	result, err := current.NewResultFromResult(r)
-	if err != nil {
-		return err
-	}
-
-	if len(result.IPs) == 0 {
-		return errors.New("IPAM plugin returned missing IP config")
-	}
-
-	result.Interfaces = []*current.Interface{brInterface, hostInterface, containerInterface}
-
-	// Gather gateway information for each IP family
-	// gwsV4, gwsV6, err := calcGateways(result, n)
+	// hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, n.MTU, n.HairpinMode)
 	// if err != nil {
 	// 	return err
 	// }
 
-	// Configure the container hardware address and IP address(es)
-	if err := netns.Do(func(_ ns.NetNS) error {
-		contVeth, err := net.InterfaceByName(args.IfName)
-		if err != nil {
-			return err
-		}
+	// run the IPAM plugin and get back the config to apply
+	// r, err := ipam.ExecAdd(n.IPAM.Type, args.StdinData)
+	// if err != nil {
+	// 	return err
+	// }
 
-		// Add the IP to the interface
-		if err := ipam.ConfigureIface(args.IfName, result); err != nil {
-			return err
-		}
+	// Convert whatever the IPAM result was into the current Result type
+	// result, err := current.NewResultFromResult(r)
+	// if err != nil {
+	// 	return err
+	// }
 
-		// Send a gratuitous arp
-		for _, ipc := range result.IPs {
-			if ipc.Version == "4" {
-				_ = arping.GratuitousArpOverIface(ipc.Address.IP, *contVeth)
-			}
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
+	// if len(result.IPs) == 0 {
+	// 	return errors.New("IPAM plugin returned missing IP config")
+	// }
 
-	// Refetch the bridge since its MAC address may change when the first
-	// veth is added or after its IP address is set
-	br, err = bridgeByName(n.BrName)
-	if err != nil {
-		return err
-	}
-	brInterface.Mac = br.Attrs().HardwareAddr.String()
+	// result.Interfaces = []*current.Interface{brInterface, hostInterface, containerInterface}
 
-	result.DNS = n.DNS
+	// // Configure the container hardware address and IP address(es)
+	// if err := netns.Do(func(_ ns.NetNS) error {
+	// 	contVeth, err := net.InterfaceByName(args.IfName)
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
-	return types.PrintResult(result, cniVersion)
+	// 	// Add the IP to the interface
+	// 	if err := ipam.ConfigureIface(args.IfName, result); err != nil {
+	// 		return err
+	// 	}
+
+	// 	// Send a gratuitous arp
+	// 	for _, ipc := range result.IPs {
+	// 		if ipc.Version == "4" {
+	// 			_ = arping.GratuitousArpOverIface(ipc.Address.IP, *contVeth)
+	// 		}
+	// 	}
+	// 	return nil
+	// }); err != nil {
+	// 	return err
+	// }
+
+	return nil
+	// return types.PrintResult(result, cniVersion)
 }
 
 func cmdDel(args *skel.CmdArgs) error {
@@ -230,21 +207,21 @@ func cmdDel(args *skel.CmdArgs) error {
 	// There is a netns so try to clean up. Delete can be called multiple times
 	// so don't return an error if the device is already removed.
 	// If the device isn't there then don't try to clean up IP masq either.
-	var ipnets []*net.IPNet
-	err = ns.WithNetNSPath(args.Netns, func(_ ns.NetNS) error {
-		var err error
-		ipnets, err = ip.DelLinkByNameAddr(args.IfName)
-		if err != nil && err == ip.ErrLinkNotFound {
-			return nil
-		}
-		return err
-	})
+	// var ipnets []*net.IPNet
+	// err = ns.WithNetNSPath(args.Netns, func(_ ns.NetNS) error {
+	// 	var err error
+	// 	ipnets, err = ip.DelLinkByNameAddr(args.IfName)
+	// 	if err != nil && err == ip.ErrLinkNotFound {
+	// 		return nil
+	// 	}
+	// 	return err
+	// })
 
-	if err != nil {
-		return err
-	}
+	// if err != nil {
+	// 	return err
+	// }
 
-	return err
+	// return err
 }
 
 func main() {
