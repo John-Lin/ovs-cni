@@ -99,10 +99,22 @@
 			"revisionTime": "2017-09-15T11:44:21Z"
 		},
 		{
+			"checksumSHA1": "mrz/kicZiUaHxkyfvC/DyQcr8Do=",
+			"path": "github.com/davecgh/go-spew/spew",
+			"revision": "ecdeabc65495df2dec95d7c4a4c3e021903035e5",
+			"revisionTime": "2017-10-02T20:02:53Z"
+		},
+		{
 			"checksumSHA1": "p6Lp0JStM2aO1Jns3ZHixwpVXLY=",
 			"path": "github.com/j-keck/arping",
 			"revision": "2cf9dc699c5640a7e2c81403a44127bf28033600",
 			"revisionTime": "2016-06-18T11:04:41Z"
+		},
+		{
+			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
+			"path": "github.com/pmezard/go-difflib/difflib",
+			"revision": "792786c7400a136282c1664665ae0a8db921c6c2",
+			"revisionTime": "2016-01-10T10:55:54Z"
 		},
 		{
 			"checksumSHA1": "BYvROBsiyAXK4sq6yhDe8RgT4LM=",
@@ -115,6 +127,12 @@
 			"path": "github.com/socketplane/libovsdb",
 			"revision": "4de3618546deba09d8875d719752db32bd4652c0",
 			"revisionTime": "2017-01-16T17:48:20Z"
+		},
+		{
+			"checksumSHA1": "mGbTYZ8dHVTiPTTJu3ktp+84pPI=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "890a5c3458b43e6104ff5da8dfa139d013d77544",
+			"revisionTime": "2017-07-05T02:17:15Z"
 		},
 		{
 			"checksumSHA1": "t1ctd42IxJTpv7KWicxdmEeb+KE=",
