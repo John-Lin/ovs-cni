@@ -15,6 +15,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ipam"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/j-keck/arping"
+	log "github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
 )
 
@@ -22,7 +23,6 @@ const defaultBrName = "br0"
 
 type NetConf struct {
 	types.NetConf
-	BrName     string   `json:"bridge"`
 	IsMaster   bool     `json:"isMaster"`
 	OVSBrName  string   `json:"ovsBridge"`
 	VtepIPs    []string `json:"vtepIPs"`
@@ -55,6 +55,27 @@ func bridgeByName(name string) (*netlink.Bridge, error) {
 	if !ok {
 		return nil, fmt.Errorf("%q already exists but is not a bridge", name)
 	}
+	return br, nil
+}
+
+func ensureBridge(brName string) (*netlink.Bridge, error) {
+	ovsbr, err := NewOVSSwitch(brName)
+	if err != nil {
+		log.Fatal("failed to NewOVSSwitch: ", err)
+		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.BrName, err)
+	}
+
+	// Re-fetch link to read all attributes and if it already existed,
+	// ensure it's really a bridge with similar configuration
+	br, err = bridgeByName(brName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := netlink.LinkSetUp(br); err != nil {
+		return nil, err
+	}
+
 	return br, nil
 }
 
@@ -100,14 +121,13 @@ func setupVeth(netns ns.NetNS, br *netlink.Bridge, ifName string, mtu int, hairp
 
 func setupBridge(n *NetConf) (*netlink.Bridge, *current.Interface, error) {
 	// create bridge if necessary
-	br, err := ensureBridge(n.BrName, n.MTU, n.PromiscMode)
+	br, err := ensureBridge(n.OVSBrName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.BrName, err)
 	}
 
 	return br, &current.Interface{
 		Name: br.Attrs().Name,
-		Mac:  br.Attrs().HardwareAddr.String(),
 	}, nil
 }
 
@@ -117,8 +137,6 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
-	// FIXME
-	// should setup a OVS bridge
 	br, brInterface, err := setupBridge(n)
 	if err != nil {
 		return err

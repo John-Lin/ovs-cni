@@ -39,6 +39,24 @@
 			"revisionTime": "2017-01-16T17:48:20Z"
 		},
 		{
+			"checksumSHA1": "t1ctd42IxJTpv7KWicxdmEeb+KE=",
+			"path": "github.com/vishvananda/netlink",
+			"revision": "177f1ceba557262b3f1c3aba4df93a29199fb4eb",
+			"revisionTime": "2017-09-15T20:12:01Z"
+		},
+		{
+			"checksumSHA1": "oNtzRasYc/H9quYOt/bNVP814OU=",
+			"path": "github.com/vishvananda/netlink/nl",
+			"revision": "177f1ceba557262b3f1c3aba4df93a29199fb4eb",
+			"revisionTime": "2017-09-15T20:12:01Z"
+		},
+		{
+			"checksumSHA1": "YDN9yoXZ/KBWqILw9PCNtd/SRAI=",
+			"path": "github.com/vishvananda/netns",
+			"revision": "86bef332bfc3b59b7624a600bd53009ce91a9829",
+			"revisionTime": "2017-07-07T00:42:18Z"
+		},
+		{
 			"checksumSHA1": "nqWNlnMmVpt628zzvyo6Yv2CX5Q=",
 			"path": "golang.org/x/crypto/ssh/terminal",
 			"revision": "9419663f5a44be8b34ca85f08abc5fe1be11f8a3",
