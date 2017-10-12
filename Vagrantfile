@@ -26,7 +26,7 @@ Vagrant.configure("2") do |config|
     tar -zxf cni-plugins-amd64-v0.6.0.tgz -C /home/ubuntu/cni
     rm -rf /home/ubuntu/cni-plugins-amd64-v0.6.0.tgz /home/ubuntu/cni-amd64-v0.6.0.tgz
     # Download linen CNI source
-    git clone https://github.com/John-Lin/linen-cni
+    git clone https://github.com/John-Lin/ovs-cni    
   SHELL
 
   config.vm.provider :virtualbox do |v|
