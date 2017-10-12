@@ -16,25 +16,28 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
-	"math/rand"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestVxlanIfName(t *testing.T) {
-	// Test to returns formatted vxlan interface name
-	s1 := rand.NewSource(time.Now().UnixNano())
-	r1 := rand.New(s1)
+var ovsSwitch *OVSSwitch
+var bridgeName string = "ovs_cni"
 
-	var reg []string
-	for i := 0; i <= 3; i++ {
-		reg = append(reg, strconv.Itoa(r1.Intn(256)))
-	}
+func TestNewOVSSwitch(t *testing.T) {
+	var err error
+	ovsSwitch, err = NewOVSSwitch(bridgeName)
+	assert.NoError(t, err)
+}
 
-	intfName := vxlanIfName(strings.Join(reg[:], "."))
+func TestDeleteOVSSwitch(t *testing.T) {
+	err := ovsSwitch.Delete()
+	assert.NoError(t, err)
 
-	checked := "vxif" + strings.Join(reg[:], "_")
-	assert.Equal(t, intfName, checked, "Those two names should be the same")
+}
+
+func TestDeleteOVSSwitch_Invalid(t *testing.T) {
+	//wait previous delete
+	time.Sleep(300 * time.Millisecond)
+	err := ovsSwitch.Delete()
+	assert.Error(t, err)
 }
