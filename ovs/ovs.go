@@ -44,7 +44,7 @@ func loadNetConf(bytes []byte) (*NetConf, string, error) {
 }
 
 func ensureBridge(brName string) (*netlink.Bridge, error) {
-	ovsbr, err := NewOVSSwitch(brName)
+	_, err := NewOVSSwitch(brName)
 	if err != nil {
 		log.Fatal("failed to NewOVSSwitch: ", err)
 		return nil, fmt.Errorf("failed to create bridge %q: %v", brName, err)
@@ -127,6 +127,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	_ = netns
 	_ = br
 	_ = brInterface
+	_ = cniVersion
 
 	// hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, n.MTU, n.HairpinMode)
 	// if err != nil {
