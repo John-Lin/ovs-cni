@@ -2,12 +2,12 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"github.com/John-Lin/ovsdb"
+	log "github.com/sirupsen/logrus"
 	"net"
 	"strconv"
 	"time"
-
-	"github.com/John-Lin/ovsdb"
-	log "github.com/sirupsen/logrus"
 )
 
 // OVSSwitch is a bridge instance
