@@ -11,7 +11,7 @@ $ sudo ip netns add ns1
 $ sudo CNI_COMMAND=ADD CNI_CONTAINERID=ns1 CNI_NETNS=/var/run/netns/ns1 CNI_IFNAME=eth2 CNI_PATH=`pwd` ./ovs <example.conf
 ```
 
-# Cleanup 
+## Cleanup 
 ```
 $ sudo ip netns del ns1
 
