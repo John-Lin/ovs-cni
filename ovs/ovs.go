@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"runtime"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -12,8 +14,8 @@ import (
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ipam"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/j-keck/arping"
 	log "github.com/sirupsen/logrus"
-	"github.com/vishvananda/netlink"
 )
 
 const defaultBrName = "br0"
@@ -43,24 +45,16 @@ func loadNetConf(bytes []byte) (*NetConf, string, error) {
 	return n, n.CNIVersion, nil
 }
 
-func ensureBridge(brName string) (*netlink.Bridge, error) {
-	_, err := NewOVSSwitch(brName)
+func ensureBridge(brName string) (*OVSSwitch, error) {
+	ovsbr, err := NewOVSSwitch(brName)
 	if err != nil {
 		log.Fatal("failed to NewOVSSwitch: ", err)
-		return nil, fmt.Errorf("failed to create bridge %q: %v", brName, err)
+		return nil, fmt.Errorf("failed to ensure bridge %q: %v", brName, err)
 	}
-
-	// Re-fetch link to read all attributes and if it already existed,
-	// ensure it's really a bridge with similar configuration
-	br, err := bridgeByName(brName)
-	if err != nil {
-		return nil, err
-	}
-
-	return br, nil
+	return ovsbr, nil
 }
 
-func setupVeth(netns ns.NetNS, br *netlink.Bridge, ifName string, mtu int, hairpinMode bool) (*current.Interface, *current.Interface, error) {
+func setupVeth(netns ns.NetNS, br *OVSSwitch, ifName string, mtu int) (*current.Interface, *current.Interface, error) {
 	contIface := &current.Interface{}
 	hostIface := &current.Interface{}
 
@@ -74,36 +68,36 @@ func setupVeth(netns ns.NetNS, br *netlink.Bridge, ifName string, mtu int, hairp
 		contIface.Mac = containerVeth.HardwareAddr.String()
 		contIface.Sandbox = netns.Path()
 		hostIface.Name = hostVeth.Name
+
+		// ip link set lo up
+		_, err = ifaceUp("lo")
+		if err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// need to lookup hostVeth again as its index has changed during ns move
-	hostVeth, err := netlink.LinkByName(hostIface.Name)
+	err = br.addPort(hostIface.Name)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to lookup %q: %v", hostIface.Name, err)
+		log.Fatalf("failed to addPort switch - host: %v", err)
 	}
-	hostIface.Mac = hostVeth.Attrs().HardwareAddr.String()
-
-	// connect host veth end to the bridge
-	if err := netlink.LinkSetMaster(hostVeth, br); err != nil {
-		return nil, nil, fmt.Errorf("failed to connect %q to bridge %v: %v", hostVeth.Attrs().Name, br.Attrs().Name, err)
-	}
+	log.Infof("%s Adding a link:", br.BridgeName)
 
 	return hostIface, contIface, nil
 }
 
-func setupBridge(n *NetConf) (*netlink.Bridge, *current.Interface, error) {
+func setupBridge(n *NetConf) (*OVSSwitch, *current.Interface, error) {
 	// create bridge if necessary
-	br, err := ensureBridge(n.OVSBrName)
+	ovsbr, err := ensureBridge(n.OVSBrName)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create bridge %q: %v", n.OVSBrName, err)
+		return nil, nil, fmt.Errorf("failed to setup bridge %q: %v", n.OVSBrName, err)
 	}
 
-	return br, &current.Interface{
-		Name: br.Attrs().Name,
+	return ovsbr, &current.Interface{
+		Name: ovsbr.BridgeName,
 	}, nil
 }
 
@@ -113,6 +107,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
+	// Create a Open vSwitch bridge
 	br, brInterface, err := setupBridge(n)
 	if err != nil {
 		return err
@@ -124,59 +119,53 @@ func cmdAdd(args *skel.CmdArgs) error {
 	}
 	defer netns.Close()
 
-	_ = netns
-	_ = br
-	_ = brInterface
-	_ = cniVersion
-
-	// hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, n.MTU, n.HairpinMode)
-	// if err != nil {
-	// 	return err
-	// }
+	hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, 1500)
+	if err != nil {
+		return err
+	}
 
 	// run the IPAM plugin and get back the config to apply
-	// r, err := ipam.ExecAdd(n.IPAM.Type, args.StdinData)
-	// if err != nil {
-	// 	return err
-	// }
+	r, err := ipam.ExecAdd(n.IPAM.Type, args.StdinData)
+	if err != nil {
+		return err
+	}
 
 	// Convert whatever the IPAM result was into the current Result type
-	// result, err := current.NewResultFromResult(r)
-	// if err != nil {
-	// 	return err
-	// }
+	result, err := current.NewResultFromResult(r)
+	if err != nil {
+		return err
+	}
 
-	// if len(result.IPs) == 0 {
-	// 	return errors.New("IPAM plugin returned missing IP config")
-	// }
+	if len(result.IPs) == 0 {
+		return errors.New("IPAM plugin returned missing IP config")
+	}
 
-	// result.Interfaces = []*current.Interface{brInterface, hostInterface, containerInterface}
+	result.Interfaces = []*current.Interface{brInterface, hostInterface, containerInterface}
 
-	// // Configure the container hardware address and IP address(es)
-	// if err := netns.Do(func(_ ns.NetNS) error {
-	// 	contVeth, err := net.InterfaceByName(args.IfName)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	// Configure the container hardware address and IP address(es)
+	if err := netns.Do(func(_ ns.NetNS) error {
+		contVeth, err := net.InterfaceByName(args.IfName)
+		if err != nil {
+			return err
+		}
 
-	// 	// Add the IP to the interface
-	// 	if err := ipam.ConfigureIface(args.IfName, result); err != nil {
-	// 		return err
-	// 	}
+		// Add the IP to the interface
+		if err := ipam.ConfigureIface(args.IfName, result); err != nil {
+			return err
+		}
 
-	// 	// Send a gratuitous arp
-	// 	for _, ipc := range result.IPs {
-	// 		if ipc.Version == "4" {
-	// 			_ = arping.GratuitousArpOverIface(ipc.Address.IP, *contVeth)
-	// 		}
-	// 	}
-	// 	return nil
-	// }); err != nil {
-	// 	return err
-	// }
+		// Send a gratuitous arp
+		for _, ipc := range result.IPs {
+			if ipc.Version == "4" {
+				_ = arping.GratuitousArpOverIface(ipc.Address.IP, *contVeth)
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
 
-	return nil
-	// return types.PrintResult(result, cniVersion)
+	return types.PrintResult(result, cniVersion)
 }
 
 func cmdDel(args *skel.CmdArgs) error {
