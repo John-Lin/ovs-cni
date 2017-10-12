@@ -53,8 +53,7 @@ func (sw *OVSSwitch) addPort(ifName string) error {
 	if !sw.ovsdb.IsPortNamePresent(ifName) {
 		err := sw.ovsdb.CreatePort(ifName, "", 0)
 		if err != nil {
-			log.Fatalf("Error creating the port. Err: %v", err)
-			return err
+			return fmt.Errorf("Error creating the port, Err: %v", err)
 		}
 	}
 	return nil

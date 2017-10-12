@@ -29,10 +29,19 @@ func TestNewOVSSwitch(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAddPort(t *testing.T) {
+	err := ovsSwitch.addPort("test")
+	assert.NoError(t, err)
+}
+
+func TestAddPort_Invalid(t *testing.T) {
+	err := ovsSwitch.addPort("")
+	assert.Error(t, err)
+}
+
 func TestDeleteOVSSwitch(t *testing.T) {
 	err := ovsSwitch.Delete()
 	assert.NoError(t, err)
-
 }
 
 func TestDeleteOVSSwitch_Invalid(t *testing.T) {
