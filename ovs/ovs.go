@@ -43,18 +43,6 @@ func loadNetConf(bytes []byte) (*NetConf, string, error) {
 	return n, n.CNIVersion, nil
 }
 
-func bridgeByName(name string) (*netlink.Bridge, error) {
-	l, err := netlink.LinkByName(name)
-	if err != nil {
-		return nil, fmt.Errorf("could not lookup %q: %v", name, err)
-	}
-	br, ok := l.(*netlink.Bridge)
-	if !ok {
-		return nil, fmt.Errorf("%q already exists but is not a bridge", name)
-	}
-	return br, nil
-}
-
 func ensureBridge(brName string) (*netlink.Bridge, error) {
 	ovsbr, err := NewOVSSwitch(brName)
 	if err != nil {
@@ -221,7 +209,7 @@ func cmdDel(args *skel.CmdArgs) error {
 	// 	return err
 	// }
 
-	// return err
+	return nil
 }
 
 func main() {
