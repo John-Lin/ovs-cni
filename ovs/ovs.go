@@ -150,6 +150,13 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 
 		// Add the IP to the interface
+		for _, ipc := range result.IPs {
+			// All IPs currently refer to the container interface
+			// 0 -> bridge itself
+			// 1 -> veth endpoint
+			// 2 -> interface in Container.
+			ipc.Interface = current.Int(2)
+		}
 		if err := ipam.ConfigureIface(args.IfName, result); err != nil {
 			return err
 		}
