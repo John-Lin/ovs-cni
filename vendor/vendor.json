@@ -99,6 +99,12 @@
 			"revisionTime": "2017-09-15T11:44:21Z"
 		},
 		{
+			"checksumSHA1": "p6Lp0JStM2aO1Jns3ZHixwpVXLY=",
+			"path": "github.com/j-keck/arping",
+			"revision": "2cf9dc699c5640a7e2c81403a44127bf28033600",
+			"revisionTime": "2016-06-18T11:04:41Z"
+		},
+		{
 			"checksumSHA1": "BYvROBsiyAXK4sq6yhDe8RgT4LM=",
 			"path": "github.com/sirupsen/logrus",
 			"revision": "89742aefa4b206dcf400792f3bd35b542998eb3b",
