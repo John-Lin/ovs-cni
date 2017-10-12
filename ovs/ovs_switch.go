@@ -88,3 +88,20 @@ func (sw *OVSSwitch) Delete() error {
 
 	return sw.ovsdb.DeleteBridge(sw.BridgeName)
 }
+
+func (sw *OVSSwitch) AddVETPs(VtepIPs []string) error {
+	for _, v := range VtepIPs {
+		intfName := vxlanIfName(v)
+		isPresent, vsifName := sw.ovsdb.IsVtepPresent(v)
+
+		if !isPresent || (vsifName != intfName) {
+			//create VTEP
+			err := sw.ovsdb.CreateVtep(intfName, v)
+			if err != nil {
+				return fmt.Errorf("Error creating VTEP port %s. Err: %v", intfName, err)
+			}
+
+		}
+	}
+	return nil
+}
