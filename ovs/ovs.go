@@ -172,6 +172,20 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
+	if len(n.VtepIPs) != 0 {
+		// Create VxLAN tunnelings
+		if err = br.AddVTEPs(n.VtepIPs); err != nil {
+			return err
+		}
+	}
+
+	if n.Controller != "" {
+		// Set SDN controller
+		if err = br.SetCtrl(n.Controller); err != nil {
+			return err
+		}
+	}
+
 	return types.PrintResult(result, cniVersion)
 }
 
