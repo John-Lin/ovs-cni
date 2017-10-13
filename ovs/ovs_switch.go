@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/John-Lin/ovsdb"
-	log "github.com/sirupsen/logrus"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/John-Lin/ovsdb"
+	log "github.com/sirupsen/logrus"
 )
 
 // OVSSwitch is a bridge instance
@@ -88,7 +89,7 @@ func (sw *OVSSwitch) Delete() error {
 	return sw.ovsdb.DeleteBridge(sw.BridgeName)
 }
 
-func (sw *OVSSwitch) AddVETPs(VtepIPs []string) error {
+func (sw *OVSSwitch) AddVTEPs(VtepIPs []string) error {
 	for _, v := range VtepIPs {
 		intfName := vxlanIfName(v)
 		isPresent, vsifName := sw.ovsdb.IsVtepPresent(v)
