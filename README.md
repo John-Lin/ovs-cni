@@ -1,6 +1,8 @@
 # ovs-cni
 
-## Testing
+[![Build Status](https://api.travis-ci.org/John-Lin/ovsdb.svg?branch=master)](https://travis-ci.org/John-Lin/ovsdb)
+
+## Basic Usage
 
 1. Move the binary from `bin/ovs` to `cni/ovs` 
 2. Put the example.conf in `cni/example.conf` and run command below
