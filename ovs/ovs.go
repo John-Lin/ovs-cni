@@ -15,6 +15,7 @@ import (
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/containernetworking/plugins/pkg/ipam"
 	"github.com/containernetworking/plugins/pkg/ns"
+	"github.com/containernetworking/plugins/pkg/utils"
 
 	"github.com/j-keck/arping"
 	log "github.com/sirupsen/logrus"
@@ -152,9 +153,9 @@ func ensureBridgeAddr(br *OVSSwitch, family int, ipn *net.IPNet) error {
 		return fmt.Errorf("could not add IP address to %q: %v", br.BridgeName, err)
 	}
 
-	// enables the link device
-	if err := netlink.LinkSetUp(ovsbrLink); err != nil {
-		return fmt.Errorf("could not set ovs bridge link up: %v", err)
+	// set ovs link device up
+	if err := setLinkUp(br.BridgeName); err != nil {
+		return fmt.Errorf("Error setting link %s up. Err: %v", br.BridgeName, err)
 	}
 	return nil
 }
@@ -337,15 +338,15 @@ func cmdAdd(args *skel.CmdArgs) error {
 		}
 	}
 
-	// if n.IPMasq {
-	// 	chain := utils.FormatChainName(n.Name, args.ContainerID)
-	// 	comment := utils.FormatComment(n.Name, args.ContainerID)
-	// 	for _, ipc := range result.IPs {
-	// 		if err = ip.SetupIPMasq(ip.Network(&ipc.Address), chain, comment); err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+	if n.IPMasq {
+		chain := utils.FormatChainName(n.Name, args.ContainerID)
+		comment := utils.FormatComment(n.Name, args.ContainerID)
+		for _, ipc := range result.IPs {
+			if err = ip.SetupIPMasq(ip.Network(&ipc.Address), chain, comment); err != nil {
+				return err
+			}
+		}
+	}
 
 	return types.PrintResult(result, cniVersion)
 }

@@ -17,9 +17,20 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/vishvananda/netlink"
 )
 
 // vxlanIfName returns formatted vxlan interface name
 func vxlanIfName(vtepIP string) string {
 	return fmt.Sprintf("vxif%s", strings.Replace(vtepIP, ".", "_", -1))
+}
+
+// setLinkUp sets the link up
+func setLinkUp(name string) error {
+	iface, err := netlink.LinkByName(name)
+	if err != nil {
+		return err
+	}
+	return netlink.LinkSetUp(iface)
 }
