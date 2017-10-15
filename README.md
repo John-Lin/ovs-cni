@@ -1,6 +1,6 @@
 # ovs-cni
 
-[![Build Status](https://api.travis-ci.org/John-Lin/ovsdb.svg?branch=master)](https://travis-ci.org/John-Lin/ovsdb)
+[![Build Status](https://api.travis-ci.org/John-Lin/ovs-cni.svg?branch=master)](https://travis-ci.org/John-Lin/ovs-cni)
 
 ## Basic Usage
 
