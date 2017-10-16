@@ -34,8 +34,20 @@ func TestAddPort(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAddVTEPs(t *testing.T) {
+	err := ovsSwitch.AddVTEPs([]string{"10.16.1.1"})
+	assert.NoError(t, err)
+}
+
 func TestAddPort_Invalid(t *testing.T) {
 	err := ovsSwitch.addPort("")
+	assert.Error(t, err)
+}
+
+func TestSetCtrl_Invalid(t *testing.T) {
+	err := ovsSwitch.SetCtrl("abc")
+	assert.Error(t, err)
+	err = ovsSwitch.SetCtrl("10.1.1.1:abcde")
 	assert.Error(t, err)
 }
 
