@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/vishvananda/netlink"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -37,4 +38,16 @@ func TestVxlanIfName(t *testing.T) {
 
 	checked := "vxif" + strings.Join(reg[:], "_")
 	assert.Equal(t, intfName, checked, "Those two names should be the same")
+}
+
+func TestSetLinkUp(t *testing.T) {
+	iface, err := netlink.LinkByName("lo")
+	assert.NoError(t, err)
+	err = netlink.LinkSetUp(iface)
+	assert.NoError(t, err)
+}
+
+func TestSetLinkUp_Invalid(t *testing.T) {
+	_, err := netlink.LinkByName("unknown")
+	assert.Error(t, err)
 }
