@@ -368,10 +368,10 @@ func cmdDel(args *skel.CmdArgs) error {
 	// There is a netns so try to clean up. Delete can be called multiple times
 	// so don't return an error if the device is already removed.
 	// If the device isn't there then don't try to clean up IP masq either.
-	var ipnets []*net.IPNet
+	var ipnets *net.IPNet
 	err = ns.WithNetNSPath(args.Netns, func(_ ns.NetNS) error {
 		var err error
-		ipnets, err = ip.DelLinkByNameAddr(args.IfName)
+		ipnets, err = ip.DelLinkByNameAddr(args.IfName, netlink.FAMILY_ALL)
 		if err != nil && err == ip.ErrLinkNotFound {
 			return nil
 		}
@@ -385,10 +385,8 @@ func cmdDel(args *skel.CmdArgs) error {
 	if n.IPMasq {
 		chain := utils.FormatChainName(n.Name, args.ContainerID)
 		comment := utils.FormatComment(n.Name, args.ContainerID)
-		for _, ipn := range ipnets {
-			if err := ip.TeardownIPMasq(ipn, chain, comment); err != nil {
-				return err
-			}
+		if err := ip.TeardownIPMasq(ipnets, chain, comment); err != nil {
+			return err
 		}
 	}
 
