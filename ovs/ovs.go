@@ -185,7 +185,7 @@ func setupVeth(netns ns.NetNS, br *OVSSwitch, ifName string, mtu int) (*current.
 		hostIface.Name = hostVeth.Name
 
 		// ip link set lo up
-		_, err = ifaceUp("lo")
+		_, err = setLinkUp("lo")
 		if err != nil {
 			return err
 		}

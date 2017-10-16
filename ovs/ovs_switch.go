@@ -41,7 +41,7 @@ func NewOVSSwitch(bridgeName string) (*OVSSwitch, error) {
 	// log.Infof("Waiting for OVS bridge %s setup", bridgeName)
 
 	// ip link set ovs up
-	_, err := ifaceUp(bridgeName)
+	_, err := setLinkUp(bridgeName)
 	if err != nil {
 		return nil, err
 	}
