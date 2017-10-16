@@ -16,7 +16,6 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
-	"github.com/vishvananda/netlink"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -41,13 +40,11 @@ func TestVxlanIfName(t *testing.T) {
 }
 
 func TestSetLinkUp(t *testing.T) {
-	iface, err := netlink.LinkByName("lo")
-	assert.NoError(t, err)
-	err = netlink.LinkSetUp(iface)
+	err := setLinkUp("lo")
 	assert.NoError(t, err)
 }
 
 func TestSetLinkUp_Invalid(t *testing.T) {
-	_, err := netlink.LinkByName("unknown")
+	err := setLinkUp("unknown")
 	assert.Error(t, err)
 }
