@@ -64,18 +64,15 @@ func (sw *OVSSwitch) addPort(ifName string) error {
 func (sw *OVSSwitch) SetCtrl(hostport string) error {
 	host, port, err := net.SplitHostPort(hostport)
 	if err != nil {
-		log.Fatalf("Invalid controller IP and port. Err: %v", err)
-		return err
+		return fmt.Errorf("Invalid controller IP and port. Err: %v", err)
 	}
 	uPort, err := strconv.ParseUint(port, 10, 32)
 	if err != nil {
-		log.Fatalf("Invalid controller port number. Err: %v", err)
-		return err
+		return fmt.Errorf("Invalid controller port number. Err: %v", err)
 	}
 	err = sw.ovsdb.AddController(host, uint16(uPort))
 	if err != nil {
-		log.Fatalf("Error adding controller to OVS. Err: %v", err)
-		return err
+		return fmt.Errorf("Error adding controller to OVS. Err: %v", err)
 	}
 	sw.CtrlHostPort = hostport
 	return nil
