@@ -26,7 +26,6 @@ const defaultBrName = "br0"
 
 type NetConf struct {
 	types.NetConf
-	IsMaster    bool     `json:"isMaster"`
 	OVSBrName   string   `json:"ovsBridge"`
 	IsGW        bool     `json:"isGateway"`
 	IsDefaultGW bool     `json:"isDefaultGateway"`
