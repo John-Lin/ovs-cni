@@ -38,3 +38,13 @@ func TestVxlanIfName(t *testing.T) {
 	checked := "vxif" + strings.Join(reg[:], "_")
 	assert.Equal(t, intfName, checked, "Those two names should be the same")
 }
+
+func TestSetLinkUp(t *testing.T) {
+	err := setLinkUp("lo")
+	assert.NoError(t, err)
+}
+
+func TestSetLinkUp_Invalid(t *testing.T) {
+	err := setLinkUp("unknown")
+	assert.Error(t, err)
+}

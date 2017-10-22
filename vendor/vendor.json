@@ -95,6 +95,14 @@
 			"versionExact": "v0.6.0"
 		},
 		{
+			"checksumSHA1": "909B5R5pbQLe7y6cgMlr8d0aLO0=",
+			"path": "github.com/containernetworking/plugins/pkg/utils",
+			"revision": "7480240de9749f9a0a5c8614b17f1f03e0c06ab9",
+			"revisionTime": "2017-08-11T16:59:55Z",
+			"version": "=v0.6.0",
+			"versionExact": "v0.6.0"
+		},
+		{
 			"checksumSHA1": "rUAk+nce6eDIWtYo/QYIoqlTfrY=",
 			"path": "github.com/containernetworking/plugins/pkg/utils/hwaddr",
 			"revision": "0063a1b9d0b137ac5b1b4bdbef9ba75e2e76ebc7",
