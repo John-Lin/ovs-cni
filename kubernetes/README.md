@@ -33,7 +33,7 @@ in each virtual machine.
 
 ## Vagrant ssh
 
-Use `vagrant ssh HOSTNAME` and `vagrant ssh HOSTNAME` to ssh into virtaul machine. **HOSTNAME** could be define in the Vagrantfile.
+Use `vagrant ssh HOSTNAME` to ssh into virtaul machine. **HOSTNAME** could be define in the Vagrantfile.
 
 ## Before kubeadm init
 
