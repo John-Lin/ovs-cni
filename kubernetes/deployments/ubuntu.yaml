@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: ubuntu-deployment-demo
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        demo: deployment
+        version: v1
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu:14.04
+        command:
+          - sleep
+          - "3600"
