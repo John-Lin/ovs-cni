@@ -107,7 +107,7 @@ and the result looks like below
         }
         ],
         "dns": {}
-}%
+}
 ```
 
 Now, we can use some tools to help us check the current network setting, for example.  
@@ -137,4 +137,4 @@ eth2      Link encap:Ethernet  HWaddr 0a:58:0a:f4:01:0a
           TX packets:10 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:0
           RX bytes:1476 (1.4 KB)  TX bytes:828 (828.0 B)
-`
+```

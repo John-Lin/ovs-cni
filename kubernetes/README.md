@@ -18,7 +18,7 @@ host2.vm.network "public_network", bridge: "en0: Wi-Fi (AirPort)"
 ```
 [Default Network Interface](https://www.vagrantup.com/docs/networking/public_network.html#default-network-interface)
 
-## Vagrant up 
+## Vagrant up
 
 Use `vagrant up` to create a two nodes Kubernetes cluster. The detail bootstrap script is in the `Vagrantfile` and `k8s-bootstrap.sh`. 
 It will
@@ -28,6 +28,7 @@ It will
 - install kubelet kubeadm kubectl
 - download CNI and CNI plugins binaries with version 0.6.0 and replace the old one.
 - download OVS CNI plugins source
+- build the ovs-cni binary and copy to `/opt/cni/bin/`
 
 in each virtual machine.
 
@@ -145,28 +146,6 @@ We have to restart kubelet on **BOTH virtual machines** to activate the `KUBELET
 $ sudo systemctl daemon-reload
 $ sudo systemctl restart kubelet
 ```
-
-## Building ovs-cni network plugin
-
-Because ovs-cni used the package management tool called `govendor`, we have to install the govendor first.
-
-```
-$ go get -u github.com/kardianos/govendor
-```
-
-Then, we use `govendor` to download all dependencies
-
-```
-$ cd ~/go/src/github.com/John-Lin/ovs-cni
-$ govendor sync
-```
-
-build the ovs-cni binary.
-
-```
-$ ./build
-```
-the binary will come out in the `/bin` directory.
 
 ## Installing ovs-cni network plugin
 
