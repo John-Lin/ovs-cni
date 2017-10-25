@@ -20,6 +20,28 @@ $ sudo ip netns del ns1
 $ sudo ovs-vsctl del-br br0
 ```
 
+## Building ovs-cni network plugin
+
+Because ovs-cni used the package management tool called `govendor`, we have to install the govendor first.
+
+```
+$ go get -u github.com/kardianos/govendor
+```
+
+We use `govendor` to download all dependencies
+
+```
+$ cd ~/go/src/github.com/John-Lin/ovs-cni
+$ govendor sync
+```
+
+build the ovs-cni binary.
+
+```
+$ ./build.sh
+```
+the binary will come out in the `/bin` directory.
+
 # Example
 ovs-CNI also provides a vagrantfile to help you setup a demo environment to try ovs-CNI.
 
@@ -32,7 +54,7 @@ You should install vagrant in your system and make sure everything goes well.
 - Type following commang to build the `ovs-cni` binary and move it to CNI directory.
 ```
 cd ovs-cni
-sh build.sh
+./build.sh
 cp bin/ovs ../cni/ 
 ```
 - We need to provide a CNI config example for `ovs-cni`, and you can use build-in config from example directory. Use following command to copy the config to `~/cni` directory.
