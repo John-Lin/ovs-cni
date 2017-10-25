@@ -20,7 +20,9 @@ Vagrant.configure("2") do |config|
     echo 'export GOROOT=/usr/local/go' >> /home/ubuntu/.bashrc
     echo 'export GOPATH=$HOME/go' >> /home/ubuntu/.bashrc
     echo 'export PATH=$PATH:$GOROOT/bin:$GOPATH/bin' >> /home/ubuntu/.bashrc
-    source /home/ubuntu/.bashrc
+    export GOROOT=/usr/local/go
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
     mkdir -p /home/ubuntu/go/src
     rm -rf /home/ubuntu/go1.9.1.linux-amd64.tar.gz
     # Download CNI and CNI plugins binaries
@@ -33,6 +35,12 @@ Vagrant.configure("2") do |config|
     rm -rf /home/ubuntu/cni-plugins-amd64-v0.6.0.tgz /home/ubuntu/cni-amd64-v0.6.0.tgz
     # Download ovs CNI source
     git clone https://github.com/John-Lin/ovs-cni go/src/github.com/John-Lin/ovs-cni
+    go get -u github.com/kardianos/govendor
+    cd ~/go/src/github.com/John-Lin/ovs-cni
+    govendor sync
+    # build the ovs-cni binary
+    ./build.sh
+    sudo cp ~/go/src/github.com/John-Lin/ovs-cni/bin/ovs /opt/cni/bin
   SHELL
 
   cluster.each_with_index do |(hostname, info), index|
