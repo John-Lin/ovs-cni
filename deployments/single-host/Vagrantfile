@@ -8,31 +8,40 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
     set -e -x -u
     sudo apt-get update
-    sudo apt-get install -y vim git build-essential openvswitch-switch bridge-utils
+    sudo apt-get install -y vim git build-essential openvswitch-switch tcpdump
     # Install Golang
     wget --quiet https://storage.googleapis.com/golang/go1.9.1.linux-amd64.tar.gz
     sudo tar -zxf go1.9.1.linux-amd64.tar.gz -C /usr/local/
     echo 'export GOROOT=/usr/local/go' >> /home/ubuntu/.bashrc
     echo 'export GOPATH=$HOME/go' >> /home/ubuntu/.bashrc
     echo 'export PATH=$PATH:$GOROOT/bin:$GOPATH/bin' >> /home/ubuntu/.bashrc
-    source /home/ubuntu/.bashrc
+    export GOROOT=/usr/local/go
+    export GOPATH=$HOME/go
+    export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
     mkdir -p /home/ubuntu/go/src
     rm -rf /home/ubuntu/go1.9.1.linux-amd64.tar.gz
     # Download CNI and CNI plugins binaries
     wget --quiet https://github.com/containernetworking/cni/releases/download/v0.6.0/cni-amd64-v0.6.0.tgz
     wget --quiet https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
-    mkdir cni
-    tar -zxf cni-amd64-v0.6.0.tgz -C /home/ubuntu/cni
-    tar -zxf cni-plugins-amd64-v0.6.0.tgz -C /home/ubuntu/cni
+    sudo mkdir -p /opt/cni/bin
+    sudo mkdir -p /etc/cni/net.d
+    sudo tar -zxf cni-amd64-v0.6.0.tgz -C /opt/cni/bin
+    sudo tar -zxf cni-plugins-amd64-v0.6.0.tgz -C /opt/cni/bin
     rm -rf /home/ubuntu/cni-plugins-amd64-v0.6.0.tgz /home/ubuntu/cni-amd64-v0.6.0.tgz
-    # Download linen CNI source
-    git clone https://github.com/John-Lin/ovs-cni    
+    # Download ovs CNI source
+    git clone https://github.com/John-Lin/ovs-cni go/src/github.com/John-Lin/ovs-cni
+    go get -u github.com/kardianos/govendor
+    cd ~/go/src/github.com/John-Lin/ovs-cni
+    govendor sync
+    # build the ovs-cni binary
+    ./build.sh
+    sudo cp ~/go/src/github.com/John-Lin/ovs-cni/bin/ovs /opt/cni/bin
   SHELL
 
   config.vm.provider :virtualbox do |v|
-    v.customize ["modifyvm", :id, "--cpus", 4]
-    # enable this when you want to have more memory 
-    # v.customize ["modifyvm", :id, "--memory", 4096]
-    v.customize ['modifyvm', :id, '--nicpromisc1', 'allow-all']
+      v.customize ["modifyvm", :id, "--cpus", 4]
+      # enable this when you want to have more memory
+      # v.customize ["modifyvm", :id, "--memory", 4096]
+      v.customize ['modifyvm', :id, '--nicpromisc1', 'allow-all']
   end
 end
