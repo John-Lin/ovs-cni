@@ -3,10 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "97f3MSpIa1OZAnXBaYsL0DptWTk=",
+			"checksumSHA1": "GI7WxdJmXR+08QSMzhf8dRj9ZC0=",
 			"path": "github.com/John-Lin/ovsdb",
-			"revision": "69099a695b164686ccb87adf2cc50eebe72dfae4",
-			"revisionTime": "2017-10-10T15:26:22Z"
+			"revision": "c84bb513c0524d0e891e45299560b178655c3241",
+			"revisionTime": "2017-10-20T15:14:21Z"
 		},
 		{
 			"checksumSHA1": "72zRy5zCQvI87HDwbIfwhfOBXew=",
