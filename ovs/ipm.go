@@ -150,9 +150,10 @@ func GetSubnet(ipconfig IPMConfig) error {
 	return nil
 }
 
+/*
 func main() {
 
 	if err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.10.0", ETCDUrl: "10.240.0.26:2379"}); err != nil {
 		fmt.Println(err)
 	}
-}
+}*/
