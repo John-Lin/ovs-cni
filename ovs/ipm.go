@@ -27,6 +27,7 @@ type IPMConfig struct {
 	SubnetLen int
 	SubnetMin string
 	SubnetMax string
+	ETCDUrl   string
 }
 
 const etcdPrefix string = "/ovs-cni/networks/"
@@ -50,7 +51,7 @@ func checkNodeRegister(nodeName string, cli clientv3.Client) (bool, error) {
 	return true, nil
 }
 
-func checkSubNetRegister(subnet String) error {
+func checkSubNetRegister(subnet string) error {
 
 	return nil
 }
@@ -75,7 +76,7 @@ func GetSubnet(ipconfig IPMConfig) error {
 	fmt.Println(name)
 
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{"10.240.0.26:2379"},
+		Endpoints:   []string{ipconfig.ETCDUrl},
 		DialTimeout: 5 * time.Second,
 	})
 
@@ -93,7 +94,7 @@ func GetSubnet(ipconfig IPMConfig) error {
 
 func main() {
 
-	if err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.2.0"}); err != nil {
+	if err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.2.0", ETCDUrl: "10.240.0.26:2379"}); err != nil {
 		fmt.Println(err)
 	}
 }
