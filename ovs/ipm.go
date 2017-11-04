@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"github.com/coreos/etcd/clientv3"
 	"net"
@@ -33,33 +32,6 @@ type IPMConfig struct {
 }
 
 const etcdPrefix string = "/ovs-cni/networks/"
-
-func powTwo(times int) uint32 {
-	if times == 0 {
-		return uint32(1)
-	}
-
-	var ans uint32
-	ans = 1
-	for i := 0; i < times; i++ {
-		ans *= 2
-	}
-
-	return ans
-}
-
-func ip2int(ip net.IP) uint32 {
-	if len(ip) == 16 {
-		return binary.BigEndian.Uint32(ip[12:16])
-	}
-	return binary.BigEndian.Uint32(ip)
-}
-
-func int2ip(nn uint32) net.IP {
-	ip := make(net.IP, 4)
-	binary.BigEndian.PutUint32(ip, nn)
-	return ip
-}
 
 func checkNodeRegister(nodeName string, cli clientv3.Client) (*net.IPNet, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
