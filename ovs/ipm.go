@@ -61,23 +61,24 @@ func int2ip(nn uint32) net.IP {
 	return ip
 }
 
-func checkNodeRegister(nodeName string, cli clientv3.Client) (bool, error) {
+func checkNodeRegister(nodeName string, cli clientv3.Client) (*net.IPNet, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := cli.Get(ctx, etcdPrefix+nodeName, clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		return false, fmt.Errorf("Fetch etcd prefix error:%v", err)
+		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
 	}
 
 	if 0 == len(resp.Kvs) {
-		return false, nil
+		return nil, nil
 	}
 	/*
 		for _, ev := range resp.Kvs {
 			fmt.Printf("%s : %s\n", ev.Key, ev.Value)
 		}
 	*/
-	return true, nil
+	_, net, err := net.ParseCIDR(string(resp.Kvs[0].Value))
+	return net, err
 }
 
 func checkSubNetRegistered(subnet string, cli clientv3.Client) (bool, error) {
@@ -97,7 +98,6 @@ func checkSubNetRegistered(subnet string, cli clientv3.Client) (bool, error) {
 }
 
 func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) error {
-	fmt.Println("Try to register")
 	_, err := cli.Put(context.TODO(), etcdPrefix+nodeName, "QQQ")
 	if err != nil {
 		return fmt.Errorf("Put data into etcd fail: %v", err)
@@ -108,7 +108,6 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) e
 	ipNextSubnet := powTwo(32 - ipmconfig.SubnetLen)
 	ipEnd := net.ParseIP(ipmconfig.SubnetMax)
 
-	fmt.Println(ipEnd)
 	for i := 0; ; i++ {
 		nextSubnet := int2ip(ipStart + ipNextSubnet*uint32(i))
 		success, err := checkSubNetRegistered(nextSubnet.String(), cli)
@@ -125,12 +124,10 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) e
 	return nil
 }
 
-func GetSubnet(ipconfig IPMConfig) error {
-	fmt.Println(ipconfig.Network)
-	fmt.Println(ipconfig.SubnetLen)
+func GetSubnet(ipconfig IPMConfig) (*net.IPNet, error) {
 	name, err := os.Hostname()
 	if err != nil {
-		return fmt.Errorf("Failed to get NodeName: %v", err)
+		return nil, fmt.Errorf("Failed to get NodeName: %v", err)
 	}
 
 	cli, err := clientv3.New(clientv3.Config{
@@ -143,17 +140,19 @@ func GetSubnet(ipconfig IPMConfig) error {
 		fmt.Println(err)
 	}
 
-	if !exist {
+	if exist == nil {
 		registerSubnet(name, ipconfig, *cli)
 	}
 
-	return nil
+	return exist, nil
 }
 
-/*
 func main() {
 
-	if err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.10.0", ETCDUrl: "10.240.0.26:2379"}); err != nil {
+	subnet, err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.10.0", ETCDUrl: "10.240.0.26:2379"})
+	if err != nil {
 		fmt.Println(err)
+	} else {
+		fmt.Println(subnet)
 	}
-}*/
+}
