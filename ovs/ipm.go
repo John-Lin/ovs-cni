@@ -21,14 +21,19 @@ import (
 	"net"
 	"os"
 	"time"
+	"encoding/json"
 )
 
+type CentralNet struct {
+	IPM *IPMConfig `json:"ipam"`
+}
+
 type IPMConfig struct {
-	Network   string
-	SubnetLen int
-	SubnetMin string
-	SubnetMax string
-	ETCDUrl   string
+	Network   string `json:"network"`
+	SubnetLen int    `json:"subnetLen"`
+	SubnetMin string `json:"subnetMin"`
+	SubnetMax string `json:"subnetMax"`
+	ETCDURL   string `json:"etcdURL"`
 }
 
 const etcdPrefix string = "/ovs-cni/networks/"
@@ -110,14 +115,14 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	return subnet, err
 }
 
-func GetSubnet(ipconfig IPMConfig) (*net.IPNet, error) {
+func GetSubnet(IPMConfig IPMConfig) (*net.IPNet, error) {
 	name, err := os.Hostname()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get NodeName: %v", err)
 	}
 
 	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{ipconfig.ETCDUrl},
+		Endpoints:   []string{IPMConfig.ETCDURL},
 		DialTimeout: 5 * time.Second,
 	})
 
@@ -132,18 +137,27 @@ func GetSubnet(ipconfig IPMConfig) (*net.IPNet, error) {
 	}
 
 	//Register new subnet
-	subnet, err = registerSubnet(name, ipconfig, *cli)
+	subnet, err = registerSubnet(name, IPMConfig, *cli)
 	return subnet, err
-
 }
 
-/*
-func main() {
-	subnet, err := GetSubnet(IPMConfig{Network: "10.16.0.0", SubnetLen: 24, SubnetMin: "10.16.4.0", SubnetMax: "10.16.10.0", ETCDUrl: "10.240.0.26:2379"})
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(subnet)
+func ReadFromConfig(input []byte) []byte {
+	n := CentralNet{}
+	if err := json.Unmarshal(input, &n); err != nil {
+		return []byte{}
 	}
+	subnet, err := GetSubnet(*n.IPM)
+        if err != nil {
+		return []byte{}
+	}
+	//Generate data to localHost
+	newConfig := string(`
+			{
+			"ipam":{
+			"type":"host-local",
+			"subnet":"`+subnet.String()+`"
+			}
+			}
+			`)
+	return []byte(newConfig)
 }
-*/
