@@ -72,11 +72,7 @@ func checkNodeRegister(nodeName string, cli clientv3.Client) (*net.IPNet, error)
 	if 0 == len(resp.Kvs) {
 		return nil, nil
 	}
-	/*
-		for _, ev := range resp.Kvs {
-			fmt.Printf("%s : %s\n", ev.Key, ev.Value)
-		}
-	*/
+
 	_, net, err := net.ParseCIDR(string(resp.Kvs[0].Value))
 	return net, err
 }
@@ -97,31 +93,37 @@ func checkSubNetRegistered(subnet string, cli clientv3.Client) (bool, error) {
 	return false, nil
 }
 
-func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) error {
-	_, err := cli.Put(context.TODO(), etcdPrefix+nodeName, "QQQ")
-	if err != nil {
-		return fmt.Errorf("Put data into etcd fail: %v", err)
-	}
-
+func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (*net.IPNet, error) {
+	//Convert the subnet to int. for example.
+	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
 	ipnet := net.ParseIP(ipmconfig.SubnetMin)
 	ipStart := ip2int(ipnet)
+	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
+	//(168822528 + 2^8) == 10.16.8.0
+	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
 	ipNextSubnet := powTwo(32 - ipmconfig.SubnetLen)
 	ipEnd := net.ParseIP(ipmconfig.SubnetMax)
 
-	for i := 0; ; i++ {
-		nextSubnet := int2ip(ipStart + ipNextSubnet*uint32(i))
-		success, err := checkSubNetRegistered(nextSubnet.String(), cli)
+	nextSubnet := int2ip(ipStart)
+	for i := 1; ; i++ {
+		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipmconfig.SubnetLen)
+		exist, err := checkSubNetRegistered(cidr, cli)
 		if err != nil {
-			return fmt.Errorf("Check Subnet Exist: %v", err)
+			return nil, fmt.Errorf("Check Subnet Exist: %v", err)
 		}
-		if success {
-			return nil
+		//we can use this subnet if no one uses it
+		if !exist {
+			break
 		}
 		if ipEnd.String() == nextSubnet.String() {
-			return nil
+			return nil, fmt.Errorf("No available subnet for registering")
 		}
+		nextSubnet = int2ip(ipStart + ipNextSubnet*uint32(i))
 	}
-	return nil
+
+	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipmconfig.SubnetLen, 32)}
+	_, err := cli.Put(context.TODO(), etcdPrefix+nodeName, subnet.String())
+	return subnet, err
 }
 
 func GetSubnet(ipconfig IPMConfig) (*net.IPNet, error) {
@@ -135,16 +137,20 @@ func GetSubnet(ipconfig IPMConfig) (*net.IPNet, error) {
 		DialTimeout: 5 * time.Second,
 	})
 
-	exist, err := checkNodeRegister(name, *cli)
+	subnet, err := checkNodeRegister(name, *cli)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	if exist == nil {
-		registerSubnet(name, ipconfig, *cli)
+	//Use subnet we register befored.
+	if subnet != nil {
+		return subnet, nil
 	}
 
-	return exist, nil
+	//Register new subnet
+	subnet, err = registerSubnet(name, ipconfig, *cli)
+	return subnet, err
+
 }
 
 func main() {
