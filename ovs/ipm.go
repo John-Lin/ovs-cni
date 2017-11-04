@@ -77,20 +77,28 @@ func checkNodeRegister(nodeName string, cli clientv3.Client) (*net.IPNet, error)
 	return net, err
 }
 
-func checkSubNetRegistered(subnet string, cli clientv3.Client) (bool, error) {
+func getCurrentSubNets(cli clientv3.Client) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := cli.Get(ctx, etcdPrefix, clientv3.WithPrefix())
 	cancel()
 	if err != nil {
-		return false, fmt.Errorf("Fetch etcd prefix error:%v", err)
+		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
 	}
 
+	subnets := []string{}
 	for _, ev := range resp.Kvs {
-		if string(ev.Value) == subnet {
-			return true, nil
+		subnets = append(subnets, string(ev.Value))
+	}
+	return subnets, nil
+}
+
+func checkSubNetRegistered(subnet string, subsets []string) bool {
+	for _, ev := range subsets {
+		if ev == subnet {
+			return true
 		}
 	}
-	return false, nil
+	return false
 }
 
 func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (*net.IPNet, error) {
@@ -105,12 +113,16 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	ipEnd := net.ParseIP(ipmconfig.SubnetMax)
 
 	nextSubnet := int2ip(ipStart)
+
+	subnets, err := getCurrentSubNets(cli)
+
+	if err != nil {
+		return nil, fmt.Errorf("Check Subnet Exist: %v", err)
+	}
+
 	for i := 1; ; i++ {
 		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipmconfig.SubnetLen)
-		exist, err := checkSubNetRegistered(cidr, cli)
-		if err != nil {
-			return nil, fmt.Errorf("Check Subnet Exist: %v", err)
-		}
+		exist := checkSubNetRegistered(cidr, subnets)
 		//we can use this subnet if no one uses it
 		if !exist {
 			break
@@ -122,7 +134,7 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	}
 
 	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipmconfig.SubnetLen, 32)}
-	_, err := cli.Put(context.TODO(), etcdPrefix+nodeName, subnet.String())
+	_, err = cli.Put(context.TODO(), etcdPrefix+nodeName, subnet.String())
 	return subnet, err
 }
 
