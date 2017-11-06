@@ -15,10 +15,11 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
-	"strings"
-
 	"github.com/vishvananda/netlink"
+	"net"
+	"strings"
 )
 
 // vxlanIfName returns formatted vxlan interface name
@@ -33,4 +34,31 @@ func setLinkUp(name string) error {
 		return err
 	}
 	return netlink.LinkSetUp(iface)
+}
+
+func powTwo(times int) uint32 {
+	if times == 0 {
+		return uint32(1)
+	}
+
+	var ans uint32
+	ans = 1
+	for i := 0; i < times; i++ {
+		ans *= 2
+	}
+
+	return ans
+}
+
+func ip2int(ip net.IP) uint32 {
+	if len(ip) == 16 {
+		return binary.BigEndian.Uint32(ip[12:16])
+	}
+	return binary.BigEndian.Uint32(ip)
+}
+
+func int2ip(nn uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, nn)
+	return ip
 }
