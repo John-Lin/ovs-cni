@@ -16,12 +16,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/clientv3"
 	"net"
 	"os"
 	"time"
-	"encoding/json"
 )
 
 type CentralNet struct {
@@ -141,13 +141,13 @@ func GetSubnet(IPMConfig IPMConfig) (*net.IPNet, error) {
 	return subnet, err
 }
 
-func ReadFromConfig(input []byte) []byte {
+func GenerateHostLocalConfig(input []byte) []byte {
 	n := CentralNet{}
 	if err := json.Unmarshal(input, &n); err != nil {
 		return []byte{}
 	}
 	subnet, err := GetSubnet(*n.IPM)
-        if err != nil {
+	if err != nil {
 		return []byte{}
 	}
 	//Generate data to localHost
@@ -155,7 +155,7 @@ func ReadFromConfig(input []byte) []byte {
 			{
 			"ipam":{
 			"type":"host-local",
-			"subnet":"`+subnet.String()+`"
+			"subnet":"` + subnet.String() + `"
 			}
 			}
 			`)

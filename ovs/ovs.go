@@ -239,7 +239,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	dataToIPAM := args.StdinData
 	if n.IPAM.Type == "central-ipm" {
-		dataToIPAM = ReadFromConfig(dataToIPAM)
+		dataToIPAM = GenerateHostLocalConfig(dataToIPAM)
 		n.IPAM.Type = "host-local"
 	}
 	// Create a Open vSwitch bridge
