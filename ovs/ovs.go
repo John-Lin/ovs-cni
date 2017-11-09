@@ -220,13 +220,6 @@ func setupBridge(n *NetConf) (*OVSSwitch, *current.Interface, error) {
 	}, nil
 }
 
-func enableIPForward(family int) error {
-	if family == netlink.FAMILY_V4 {
-		return ip.EnableIP4Forward()
-	}
-	return ip.EnableIP6Forward()
-}
-
 func cmdAdd(args *skel.CmdArgs) error {
 	n, cniVersion, err := loadNetConf(args.StdinData)
 	if err != nil {

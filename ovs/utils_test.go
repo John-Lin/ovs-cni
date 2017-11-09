@@ -16,12 +16,15 @@ package main
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/vishvananda/netlink"
+        "io/ioutil"
 	"math/rand"
 	"net"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+	"os"
 )
 
 func TestVxlanIfName(t *testing.T) {
@@ -72,4 +75,21 @@ func TestInt2IP(t *testing.T) {
 	input := intToIP(2130706433)
 	assert.Equal(t, "127.0.0.1", input.String())
 
+}
+
+func TestIPForward(t *testing.T) {
+	v4Path := "/proc/sys/net/ipv4/ip_forward"
+	v6Path := "/proc/sys/net/ipv6/conf/all/forwarding"
+
+	if _, err := os.Stat(v4Path); !os.IsNotExist(err) {
+		enableIPForward(netlink.FAMILY_V4)
+		content, _ := ioutil.ReadFile(v4Path)
+		assert.Equal(t, "1\n", string(content))
+	}
+
+	if _, err := os.Stat(v6Path); !os.IsNotExist(err) {
+		enableIPForward(netlink.FAMILY_V6)
+		content, _ := ioutil.ReadFile(v6Path)
+		assert.Equal(t, "1\n", string(content))
+	}
 }

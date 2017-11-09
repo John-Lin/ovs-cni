@@ -15,6 +15,7 @@
 package main
 
 import (
+	"github.com/containernetworking/plugins/pkg/ip"
 	"encoding/binary"
 	"fmt"
 	"github.com/vishvananda/netlink"
@@ -61,4 +62,11 @@ func intToIP(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)
 	return ip
+}
+
+func enableIPForward(family int) error {
+	if family == netlink.FAMILY_V4 {
+		return ip.EnableIP4Forward()
+	}
+	return ip.EnableIP6Forward()
 }
