@@ -10,8 +10,9 @@ notifications:
             - cwlin@linkernetworks.com
         on_success: change
 before_install:
-    - sudo apt-get install -y git build-essential openvswitch-switch bridge-utils
+    - sudo apt-get install -y git build-essential openvswitch-switch
     - go get -u github.com/kardianos/govendor
+    - docker run -d -p 8001:8001 -p 4001:4001 coreos/etcd -name etcd-node1
 install: 
     - govendor sync
 script:
