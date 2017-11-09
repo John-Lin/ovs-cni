@@ -59,12 +59,12 @@ func TestPowOfTwo(t *testing.T) {
 
 func TestIp2Int(t *testing.T) {
 	input := net.ParseIP("127.0.0.1")
-	result := ip2int(input)
+	result := ipToInt(input)
 	assert.Equal(t, uint32(2130706433), result)
 }
 
 func TestInt2IP(t *testing.T) {
-	input := int2ip(2130706433)
+	input := intToIP(2130706433)
 	assert.Equal(t, "127.0.0.1", input.String())
 
 }
