@@ -1,6 +1,7 @@
 # ovs-cni
 
 [![Build Status](https://api.travis-ci.org/John-Lin/ovs-cni.svg?branch=master)](https://travis-ci.org/John-Lin/ovs-cni)
+[![codecov](https://codecov.io/gh/John-Lin/ovs-cni/branch/master/graph/badge.svg)](https://codecov.io/gh/John-Lin/ovs-cni)
 
 ## Basic Usage
 
