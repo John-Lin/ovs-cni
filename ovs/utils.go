@@ -50,11 +50,11 @@ func powTwo(times int) uint32 {
 	return ans
 }
 
-func ipToInt(ip net.IP) uint32 {
-	if len(ip) == 16 {
-		return binary.BigEndian.Uint32(ip[12:16])
+func ipToInt(ip net.IP) (uint32, error) {
+	if v4 := ip.To4(); v4 != nil {
+		return binary.BigEndian.Uint32(ip[12:16]), nil
 	}
-	return binary.BigEndian.Uint32(ip)
+	return 0, fmt.Errorf("IP should be ipv4\n")
 }
 
 func intToIP(nn uint32) net.IP {

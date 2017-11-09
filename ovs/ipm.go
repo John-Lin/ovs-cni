@@ -82,7 +82,11 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	//Convert the subnet to int. for example.
 	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
 	ipnet := net.ParseIP(ipmconfig.SubnetMin)
-	ipStart := ipToInt(ipnet)
+	ipStart, err := ipToInt(ipnet)
+	if err != nil {
+		return nil, err
+	}
+
 	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
 	//(168822528 + 2^8) == 10.16.8.0
 	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
