@@ -17,6 +17,7 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"math/rand"
+	"net"
 	"strconv"
 	"strings"
 	"testing"
@@ -47,4 +48,23 @@ func TestSetLinkUp(t *testing.T) {
 func TestSetLinkUp_Invalid(t *testing.T) {
 	err := setLinkUp("unknown")
 	assert.Error(t, err)
+}
+
+func TestPowOfTwo(t *testing.T) {
+	assert.Equal(t, uint32(2), powTwo(1))
+	assert.Equal(t, uint32(1), powTwo(0))
+	assert.Equal(t, uint32(1024), powTwo(10))
+	assert.Equal(t, uint32(2147483648), powTwo(31))
+}
+
+func TestIp2Int(t *testing.T) {
+	input := net.ParseIP("127.0.0.1")
+	result := ip2int(input)
+	assert.Equal(t, uint32(2130706433), result)
+}
+
+func TestInt2IP(t *testing.T) {
+	input := int2ip(2130706433)
+	assert.Equal(t, "127.0.0.1", input.String())
+
 }
