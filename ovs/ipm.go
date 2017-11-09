@@ -82,14 +82,14 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	//Convert the subnet to int. for example.
 	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
 	ipnet := net.ParseIP(ipmconfig.SubnetMin)
-	ipStart := ip2int(ipnet)
+	ipStart := ipToInt(ipnet)
 	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
 	//(168822528 + 2^8) == 10.16.8.0
 	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
 	ipNextSubnet := powTwo(32 - ipmconfig.SubnetLen)
 	ipEnd := net.ParseIP(ipmconfig.SubnetMax)
 
-	nextSubnet := int2ip(ipStart)
+	nextSubnet := intToIP(ipStart)
 
 	subnets, err := getCurrentSubNets(cli)
 
@@ -107,7 +107,7 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 		if ipEnd.String() == nextSubnet.String() {
 			return nil, fmt.Errorf("No available subnet for registering")
 		}
-		nextSubnet = int2ip(ipStart + ipNextSubnet*uint32(i))
+		nextSubnet = intToIP(ipStart + ipNextSubnet*uint32(i))
 	}
 
 	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipmconfig.SubnetLen, 32)}
