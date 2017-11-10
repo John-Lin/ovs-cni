@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/John-Lin/ovsdb"
+	"github.com/containernetworking/cni/pkg/types/current"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -106,7 +107,7 @@ func (sw *OVSSwitch) AddVTEPs(VtepIPs []string) error {
 //Operationa
 func createOVS(n *NetConf) (*OVSSwitch, *current.Interface, error) {
 	// create bridge if necessary
-	ovsbr, err := checkOVSBridgeExist(n.OVSBrName)
+	ovsbr, err := NewOVSSwitch(n.OVSBrName)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to setup bridge %q: %v", n.OVSBrName, err)
 	}
@@ -114,13 +115,4 @@ func createOVS(n *NetConf) (*OVSSwitch, *current.Interface, error) {
 	return ovsbr, &current.Interface{
 		Name: ovsbr.BridgeName,
 	}, nil
-}
-
-func checkOVSBridgeExist(brName string) (*OVSSwitch, error) {
-	ovsbr, err := NewOVSSwitch(brName)
-	if err != nil {
-		log.Fatal("failed to NewOVSSwitch: ", err)
-		return nil, fmt.Errorf("failed to ensure bridge %q: %v", brName, err)
-	}
-	return ovsbr, nil
 }
