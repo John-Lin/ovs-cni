@@ -62,3 +62,14 @@ func TestDeleteOVSSwitch_Invalid(t *testing.T) {
 	err := ovsSwitch.Delete()
 	assert.Error(t, err)
 }
+
+func TestCreateOVS(t *testing.T) {
+	netConfig := NetConf{OVSBrName: "test0"}
+
+	ovs, cT, err := createOVS(&netConfig)
+	assert.NoError(t, err)
+	assert.Equal(t, "test0", cT.Name)
+	//wait previous delete
+	time.Sleep(300 * time.Millisecond)
+	ovs.Delete()
+}
