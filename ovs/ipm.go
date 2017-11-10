@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/containernetworking/plugins/pkg/ip"
 	"net"
 	"os"
 	"time"
@@ -77,54 +78,13 @@ func getCurrentSubNets(cli clientv3.Client) ([]string, error) {
 	return subnets, nil
 }
 
-func checkSubNetRegistered(subnet string, subsets []string) bool {
-	for _, ev := range subsets {
-		if ev == subnet {
+func checkSubNetRegistered(subnet string, nodeToSubnet map[string]string) bool {
+	for _, v := range nodeToSubnet{
+		if v == subnet {
 			return true
 		}
 	}
 	return false
-}
-
-func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (*net.IPNet, error) {
-	//Convert the subnet to int. for example.
-	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
-	ipnet := net.ParseIP(ipmconfig.SubnetMin)
-	ipStart, err := ipToInt(ipnet)
-	if err != nil {
-		return nil, err
-	}
-
-	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
-	//(168822528 + 2^8) == 10.16.8.0
-	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
-	ipNextSubnet := powTwo(32 - ipmconfig.SubnetLen)
-	ipEnd := net.ParseIP(ipmconfig.SubnetMax)
-
-	nextSubnet := intToIP(ipStart)
-
-	subnets, err := getCurrentSubNets(cli)
-
-	if err != nil {
-		return nil, fmt.Errorf("Check Subnet Exist: %v", err)
-	}
-
-	for i := 1; ; i++ {
-		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipmconfig.SubnetLen)
-		exist := checkSubNetRegistered(cidr, subnets)
-		//we can use this subnet if no one uses it
-		if !exist {
-			break
-		}
-		if ipEnd.String() == nextSubnet.String() {
-			return nil, fmt.Errorf("No available subnet for registering")
-		}
-		nextSubnet = intToIP(ipStart + ipNextSubnet*uint32(i))
-	}
-
-	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipmconfig.SubnetLen, 32)}
-	_, err = cli.Put(context.TODO(), etcdPrefix+nodeName, subnet.String())
-	return subnet, err
 }
 
 func GetSubnet(IPMConfig IPMConfig, name string) (*net.IPNet, error) {
@@ -148,7 +108,7 @@ func GetSubnet(IPMConfig IPMConfig, name string) (*net.IPNet, error) {
 	}
 
 	//Register new subnet
-	subnet, err = registerSubnet(name, IPMConfig, *cli)
+	//subnet, err = registerSubnet(name, IPMConfig, *cli)
 	return subnet, err
 }
 
@@ -201,8 +161,8 @@ func (ipm *CentralIPM) Connect(etcdUrl string) error {
 	return err
 }
 
-func (ipm *CentralIPM) PutValue(value string) (error) {
-	_, err := ipm.cli.Put(context.TODO(), etcdPrefix+ipm.hostname, value)
+func (ipm *CentralIPM) PutValue(prefix, value string) (error) {
+	_, err := ipm.cli.Put(context.TODO(), prefix, value)
 	return err
 }
 
@@ -254,7 +214,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	nextSubnet := intToIP(ipStart)
 
-	subnets, err := getCurrentSubNets(*ipm.cli)
+	nodeToSubnets, err := ipm.GetKeyValuesWithPrefix(etcdPrefix)
 
 	if err != nil {
 		return fmt.Errorf("Check Subnet Exist: %v", err)
@@ -262,7 +222,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	for i := 1; ; i++ {
 		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipm.SubnetLen)
-		exist := checkSubNetRegistered(cidr, subnets)
+		exist := checkSubNetRegistered(cidr, nodeToSubnets)
 		//we can use this subnet if no one uses it
 		if !exist {
 			break
@@ -275,7 +235,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipm.SubnetLen, 32)}
 	ipm.subnet = subnet
-	err = ipm.PutValue(subnet.String())
+	err = ipm.PutValue(etcdPrefix+ipm.hostname, subnet.String())
 	return err
 }
 
@@ -311,6 +271,53 @@ func (ipm *CentralIPM) Init(hostname, podname string)  error {
 	return nil
 }
 
-func (ipm *CentralIPM) GetGateway() {
-	fmt.Println(ipm.ETCDURL)
+func (ipm *CentralIPM) GetGateway() (string,error) {
+	if ipm.subnet == nil {
+		return "", fmt.Errorf("You should init IPM first")
+	}
+	
+	gwPrefix := etcdPrefix + ipm.hostname + "/gateway"
+	nodeValues, err := ipm.GetKeyValuesWithPrefix(gwPrefix)
+	if err != nil { 
+		return "",err
+	}
+
+	var gwIP string
+	if len(nodeValues) == 0 {
+		gwIP = getNextIP(ipm.subnet).String()
+		ipm.PutValue(gwPrefix, gwIP)
+	} else {
+		gwIP = nodeValues[gwPrefix]
+	}
+	return gwIP, nil
+}
+
+func (ipm *CentralIPM) GetAvailableIP() (string,error) {
+	if ipm.subnet == nil {
+		return "", fmt.Errorf("You should init IPM first")
+	}
+
+	ipPrefix := etcdPrefix + ipm.hostname + "/"
+	ipUsedToPod, err := ipm.GetKeyValuesWithPrefix(ipPrefix)
+	if err != nil { 
+		return "",err
+	}
+
+	ipRange := powTwo(32-(ipm.SubnetLen))
+	//Since the first IP is gateway, we should skip it
+	tmpIP:= ip.NextIP(getNextIP(ipm.subnet))
+
+	usedIPPrefix := ipPrefix + "used/"
+	var availableIP string
+	for i:=1;i<int(ipRange);i++ {
+		//check.
+		if _, ok := ipUsedToPod[usedIPPrefix + tmpIP.String()]; !ok {
+			availableIP = tmpIP.String()
+			ipm.PutValue(usedIPPrefix+ tmpIP.String(), ipm.podname)
+			break
+		}
+		tmpIP = ip.NextIP(tmpIP) 
+	}
+
+	return availableIP, nil
 }
