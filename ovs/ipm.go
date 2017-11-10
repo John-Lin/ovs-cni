@@ -24,6 +24,14 @@ import (
 	"time"
 )
 
+
+type CentralIPM struct {
+	cli	*clientv3.Client
+	hostname string
+	podname string
+	subnet	*net.IPNet
+	IPMConfig
+}
 type CentralNet struct {
 	IPM *IPMConfig `json:"ipam"`
 }
@@ -169,4 +177,140 @@ func GenerateHostLocalConfig(input []byte) []byte {
 }
 `)
 	return []byte(newConfig)
+}
+////////////////////
+func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
+	n := &CentralIPM{}
+	if err := json.Unmarshal(bytes, n); err != nil {
+		return nil, fmt.Errorf("failed to load netconf: %v", err)
+	}
+	return n, nil
+}
+
+
+/*
+	ETCD Related
+*/
+func (ipm *CentralIPM) Connect(etcdUrl string) error {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{etcdUrl},
+		DialTimeout: 5 * time.Second,
+	})
+
+	ipm.cli = cli
+	return err
+}
+
+func (ipm *CentralIPM) PutValue(value string) (error) {
+	_, err := ipm.cli.Put(context.TODO(), etcdPrefix+ipm.hostname, value)
+	return err
+}
+
+func (ipm *CentralIPM) GetKeyValuesWithPrefix(key string) (map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := ipm.cli.Get(ctx, key, clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
+	}
+
+	results :=  make(map[string]string)
+	for _, ev := range resp.Kvs {
+		results[string(ev.Key)] = string(ev.Value)
+	}
+
+	return results, nil
+}
+
+func (ipm *CentralIPM) checkNodeIsRegisted() error {
+
+	keyValues, err := ipm.GetKeyValuesWithPrefix(etcdPrefix+ipm.hostname)
+	if err != nil {
+		return err
+	}
+
+	if 0 == len(keyValues) {
+		return nil
+	}
+
+	_, ipm.subnet, err = net.ParseCIDR(keyValues[etcdPrefix+ipm.hostname])
+	return err
+}
+
+func (ipm *CentralIPM) registerSubnet() error {
+	//Convert the subnet to int. for example.
+	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
+	ipnet := net.ParseIP(ipm.SubnetMin)
+	ipStart, err := ipToInt(ipnet)
+	if err != nil {
+		return err
+	}
+
+	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
+	//(168822528 + 2^8) == 10.16.8.0
+	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
+	ipNextSubnet := powTwo(32 - ipm.SubnetLen)
+	ipEnd := net.ParseIP(ipm.SubnetMax)
+
+	nextSubnet := intToIP(ipStart)
+
+	subnets, err := getCurrentSubNets(*ipm.cli)
+
+	if err != nil {
+		return fmt.Errorf("Check Subnet Exist: %v", err)
+	}
+
+	for i := 1; ; i++ {
+		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipm.SubnetLen)
+		exist := checkSubNetRegistered(cidr, subnets)
+		//we can use this subnet if no one uses it
+		if !exist {
+			break
+		}
+		if ipEnd.String() == nextSubnet.String() {
+			return fmt.Errorf("No available subnet for registering")
+		}
+		nextSubnet = intToIP(ipStart + ipNextSubnet*uint32(i))
+	}
+
+	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipm.SubnetLen, 32)}
+	ipm.subnet = subnet
+	err = ipm.PutValue(subnet.String())
+	return err
+}
+
+func (ipm *CentralIPM) RegisterNode() error {
+	//Check Node Exist
+	err := ipm.checkNodeIsRegisted()
+	if err != nil {
+		return err
+	}
+
+	if ipm.subnet == nil {
+		err := ipm.registerSubnet()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ipm *CentralIPM) Init(hostname, podname string)  error {
+	ipm.hostname = hostname
+	ipm.podname = podname
+
+	err := ipm.Connect(ipm.ETCDURL)
+	if err != nil {
+		return err
+	}
+
+	err = ipm.RegisterNode()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ipm *CentralIPM) GetGateway() {
+	fmt.Println(ipm.ETCDURL)
 }
