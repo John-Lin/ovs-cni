@@ -71,7 +71,8 @@ func enableIPForward(family int) error {
 	return ip.EnableIP6Forward()
 }
 
-func getGatewayFromIP(ipn *net.IPNet) net.IP {
+//We use the first IP as gateway address
+func getNextIP(ipn *net.IPNet) net.IP {
 	nid := ipn.IP.Mask(ipn.Mask)
 	return ip.NextIP(nid)
 }

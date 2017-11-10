@@ -92,10 +92,10 @@ func calcGateways(result *current.Result, n *NetConf) (*gwInfo, *gwInfo, error) 
 		// 2 -> interface in container
 		ipc.Interface = current.Int(2)
 
-		// If not provided, calculate the gateway address corresponding
-		// to the selected IP address
+		// If not provided, calculate the gateway address
+		// We use first address of specific subnet as its gateway
 		if ipc.Gateway == nil && n.IsGW {
-			ipc.Gateway = getGatewayFromIP(&ipc.Address)
+			ipc.Gateway = getNextIP(&ipc.Address)
 		}
 
 		// Add a default route for this family using the current

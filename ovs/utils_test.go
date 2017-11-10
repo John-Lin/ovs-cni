@@ -97,6 +97,6 @@ func TestIPForward(t *testing.T) {
 func TestGetGatewayFromIP(t *testing.T) {
 	_, input, _ := net.ParseCIDR("192.168.194.0/22")
 
-	gwIP := getGatewayFromIP(input)
+	gwIP := getNextIP(input)
 	assert.Equal(t, gwIP.String(), "192.168.192.1")
 }
