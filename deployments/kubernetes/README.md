@@ -6,8 +6,8 @@ The Kubernetes cluster is created by kubeadm but still has some part should be h
 ## Table of Contents
 
 - [Kubernetes setup in vagrant](#kubernetes-setup-in-vagrant)
-- [Use ovs-cni as a default network interface](use-ovs-cni-as-a-default-network-interface)
-- [Extend the multiple network interfaces with OVS CNI](extend-the-multiple-network-interfaces-with-ovs-cni)
+- [Use ovs-cni as a default network interface](#use-ovs-cni-as-a-default-network-interface)
+- [Extend the multiple network interfaces with OVS CNI](#extend-the-multiple-network-interfaces-with-ovs-cni)
 
 ## Kubernetes setup in vagrant
 
