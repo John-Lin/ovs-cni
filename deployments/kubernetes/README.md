@@ -266,7 +266,7 @@ Create Multus CNI configuration file `/etc/cni/net.d/multus-cni.conf` with below
 {
     "name": "minion-cni-network",
     "type": "multus",
-    "kubeconfig": "/.kube/config"
+    "kubeconfig": "/home/ubuntu/.kube/config"
 }
 ```
 
@@ -321,7 +321,7 @@ Save the below following YAML to ovs-network.yaml
 apiVersion: "kubernetes.com/v1"
 kind: Network
 metadata:
-  name: ovs-networkobj
+  name: ovs-central-ipam-networkobj
 plugin: ovs
 args: '[
         {
@@ -337,12 +337,39 @@ args: '[
             "subnetLen": 24,
             "subnetMin": "10.245.5.0",
             "subnetMax": "10.245.50.0",
-            "etcdURL": "10.0.0.2:2379"
+            "etcdURL": "192.168.0.107:2379"
         }
         }
 ]'
 ```
-With ipam type `central-ipm` should setup a ETCD server. By default it should be kubernetes master server IP
+With ipam type `central-ipm` should setup a ETCD server. By default it should be set to kubernetes master server IP.
+
+Modify the etcd manifests to allow etcd server running on public in kuberneter master node (This could cause security issue)
+
+```shell
+sudo vim /etc/kubernetes/manifests/etcd.yaml
+```
+
+```yaml
+...
+spec:
+  containers:
+  - command:
+    - etcd
+    - --listen-client-urls=http://0.0.0.0:2379
+    - --advertise-client-urls=http://0.0.0.0:2379
+    - --data-dir=/var/lib/etcd
+...
+...
+```
+
+Restart kubelet on master node
+
+```
+$ sudo systemctl daemon-reload
+$ sudo systemctl restart kubelet
+```
+
 
 ```shell
 # kubectl create -f ovs-network.yaml
