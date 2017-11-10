@@ -44,6 +44,11 @@ func TestAddPort_Invalid(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSetCtrl(t *testing.T) {
+	err := ovsSwitch.SetCtrl("10.1.1.1:6653")
+	assert.NoError(t, err)
+}
+
 func TestSetCtrl_Invalid(t *testing.T) {
 	err := ovsSwitch.SetCtrl("abc")
 	assert.Error(t, err)
