@@ -1,9 +1,17 @@
 # Kubernetes in vagrant
 
 This document intends to give a instruction about how to create a Kubernetes cluster with ovs-cni in vagrant.
-The Kubernetes cluster is created by kubeadm but still has some part we should do it by manually. 
+The Kubernetes cluster is created by kubeadm but still has some part should be handled it by manually. 
 
-## Before vagrant up
+## Table of Contents
+
+- [Kubernetes setup in vagrant](#kubernetes-setup-in-vagrant)
+- [Use ovs-cni as a default network interface](use-ovs-cni-as-a-default-network-interface)
+- [Extend the multiple network interfaces with OVS CNI](extend-the-multiple-network-interfaces-with-ovs-cni)
+
+## Kubernetes setup in vagrant
+
+### Before vagrant up
 
 Check the default network interface on your machine. Because we used the bridged networking in Virtualbox which uses a device driver on your **host** system.
 
@@ -18,7 +26,7 @@ host2.vm.network "public_network", bridge: "en0: Wi-Fi (AirPort)"
 ```
 [Default Network Interface](https://www.vagrantup.com/docs/networking/public_network.html#default-network-interface)
 
-## Vagrant up
+### Vagrant up
 
 Use `vagrant up` to create a two nodes Kubernetes cluster. The detail bootstrap script is in the `Vagrantfile` and `k8s-bootstrap.sh`. 
 It will
@@ -32,17 +40,17 @@ It will
 
 in each virtual machine.
 
-## Vagrant ssh
+### Vagrant ssh
 
 Use `vagrant ssh HOSTNAME` to ssh into virtaul machine. **HOSTNAME** could be define in the Vagrantfile.
 
-## Before kubeadm init
+### Before kubeadm init
 
-We should check the IP on the each virtual machine. Choose a network interface that we've just attach to Virtualbox's bridge.
+Check the IP on the each virtual machine. Choose a network interface that has just attach to Virtualbox's bridge.
 
-In my case the `enp0s8` is the one that attached to Virtualbox's bridge. We will use `192.168.0.107` as our Kubernetes master IP address.
+In my case the `enp0s8` is the one that attached to Virtualbox's bridge. Use `192.168.0.107` as our Kubernetes master IP address.
 
-On host2
+On host1
 ```
 $ vagrant ssh host1
 
@@ -66,7 +74,7 @@ enp0s8    Link encap:Ethernet  HWaddr 08:00:27:27:ba:02
           RX bytes:9514803 (9.5 MB)  TX bytes:62806152 (62.8 MB)
 ```
 
-And we will use `192.168.0.108` as our Kubernetes node/minion IP address.
+And use `192.168.0.108` as our Kubernetes node/minion IP address.
 
 On host2
 ```
@@ -94,9 +102,9 @@ enp0s8    Link encap:Ethernet  HWaddr 08:00:27:f2:36:fb
 
 next, edit and add the `--node-ip` option in the configuration of `10-kubeadm.conf`
 
-add `Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.108"` in the file on **BOTH virtual machines**
+append `Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.108"` in the file on **BOTH virtual machines**
 
-The `192.168.0.108` is our node/minion IP address. we've previously mentioned.
+The `192.168.0.108` is our node/minion IP address.
 
 ```
 sudo vim /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
@@ -110,9 +118,9 @@ ExecStart=
 ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_NETWORK_ARGS $KUBELET_DNS_ARGS $KUBELET_AUTHZ_ARGS $KUBELET_CADVISOR_ARGS $KUBELET_CERTIFICATE_ARGS $KUBELET_EXTRA_ARGS
 ```
 
-## Kubeadm init
+### Kubeadm init
 
-Now we can run the `kubeadm init` to initializing your master. In the host1 (Master) run `kubeadm init` with option `--apiserver-advertise-address` this will specify the correct interface to advertise the master on as the interface with the default gateway.
+Run the `kubeadm init` to initializing master. In the host1 (Master) run `kubeadm init` with option `--apiserver-advertise-address` this will specify the correct interface to advertise the master on as the interface with the default gateway.
 
 ```
 sudo kubeadm init --apiserver-advertise-address=192.168.0.107
@@ -138,27 +146,20 @@ as root:
 
 To join the machines use `kubeadm join` on host2.
 
-## After join number of machines by running kubeadm join
+### After join number of machines by running kubeadm join
 
-We have to restart kubelet on **BOTH virtual machines** to activate the `KUBELET_EXTRA_ARGS` we've configured before:
+Restart kubelet on **BOTH virtual machines** to activate the `KUBELET_EXTRA_ARGS` has configured before:
 
 ```
 $ sudo systemctl daemon-reload
 $ sudo systemctl restart kubelet
 ```
 
-## Installing ovs-cni network plugin
+## Use ovs-cni as a default network interface
 
-To install the network plugin we have to copy the binary to the default `--cni-bin-dir` path which is in `/opt/cni/bin`.
+### Configuring ovs-cni network plugin
 
-This should be done on **BOTH virtual machines**
-
-```
-$ cd ~/go/src/github.com/John-Lin/ovs-cni
-$ sudo cp ./bin/ovs /opt/cni/bin
-```
-
-Next, modify the configuration to meet your requirements. Check the `example.conf` and copy into the default `--cni-conf-dir` path which is in `/etc/cni/net.d`.
+Modify the configuration to meet your requirements. Check the `example.conf` and copy into the default `--cni-conf-dir` path which is in `/etc/cni/net.d`.
 
 For the host1, given the following network configuration:
 
@@ -224,7 +225,7 @@ EOF
 
 **Note**: the `vtepIPs`, `rangeStart`, `rangeEnd` and `gateway` could be different on each host.
 
-## Master Isolation
+### Master Isolation
 
 By default, your cluster will not schedule pods on the master for security reasons. If you want to be able to schedule pods on the master, e.g. for a single-machine Kubernetes cluster for development, run:
 
@@ -232,7 +233,7 @@ By default, your cluster will not schedule pods on the master for security reaso
 $ kubectl taint nodes --all node-role.kubernetes.io/master-
 ```
 
-## Apply the deployment on Kubernetes cluster
+### Apply the deployment on Kubernetes cluster
 
 ```
 $ cd ~/go/src/github.com/John-Lin/ovs-cni
@@ -242,3 +243,156 @@ NAME                                  READY     STATUS    RESTARTS   AGE       I
 busybox-deployment-6b8c55d957-6wjcl   1/1       Running   11         1d        10.244.2.11   host2
 busybox-deployment-6b8c55d957-pxm6c   1/1       Running   11         1d        10.244.1.12   host1
 ```
+
+## Extend the multiple network interfaces with OVS CNI
+
+### Build and install Multus plugin
+
+This sould be do on ALL kubernetes nodes
+
+### Building multus
+```shell
+git cloen https://github.com/Intel-Corp/multus-cni.git
+cd multus-cni
+./build
+```
+
+### Installation
+Copy the binary from `/bin/multus` to `/opt/cni/bin/` and make sure the `ovs` binary is inside the directory
+
+Create Multus CNI configuration file `/etc/cni/net.d/multus-cni.conf` with below content in minions. Use only the absolute path to point to the kubeconfig file (it may change depending upon your cluster env) and make sure all CNI binary files are in `/opt/cni/bin` dir
+
+```
+{
+    "name": "minion-cni-network",
+    "type": "multus",
+    "kubeconfig": "/.kube/config"
+}
+```
+
+You might need to copy kubeconfig file from the kubernetes master node `/.kube/config` to all minion nodes.
+
+### Create a Custom Resource Definition (CRD) based Network objects
+
+Create a Third party resource `crdnetwork.yaml` for the network object
+
+```yaml
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: networks.kubernetes.com
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: kubernetes.com
+  # version name to use for REST API: /apis/<group>/<version>
+  version: v1
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: networks
+    # singular name to be used as an alias on the CLI and for display
+    singular: network
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: Network
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - net
+```
+
+kubectl create command for the Custom Resource Definition
+
+```sh
+# kubectl create -f ./crdnetwork.yaml
+customresourcedefinition "network.kubernetes.com" created
+```
+
+(kubectl get command to check the Network CRD creation)
+```sh
+# kubectl get CustomResourceDefinition
+# kubectl get crd
+NAME                      KIND
+networks.kubernetes.com   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
+```
+
+Save the below following YAML to ovs-network.yaml
+```yaml
+apiVersion: "kubernetes.com/v1"
+kind: Network
+metadata:
+  name: ovs-networkobj
+plugin: ovs
+args: '[
+        {
+        "ovsBridge":"br0",
+        "vtepIPs":[
+            "10.0.0.3"
+        ],
+        "isDefaultGateway": true,
+        "ipMasq": true,
+        "ipam":{
+            "type":"central-ipm",
+            "network":"10.245.0.0/16",
+            "subnetLen": 24,
+            "subnetMin": "10.245.5.0",
+            "subnetMax": "10.245.50.0",
+            "etcdURL": "10.0.0.2:2379"
+        }
+        }
+]'
+```
+With ipam type `central-ipm` should setup a ETCD server. By default it should be kubernetes master server IP
+
+```shell
+# kubectl create -f ovs-network.yaml
+network "ovs-networkobj" created
+```
+
+Check the network object
+
+```shell
+# kubectl get network
+# kubectl get net
+```
+
+
+### Configuring Pod to use the CRD Network objects
+
+
+Save the below following YAML to pod-multi-network.yaml. In this case flannel-conf network object act as the primary network.
+
+```yaml
+# cat pod-multi-network.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multus-multi-net-poc
+  annotations:
+    networks: '[  
+        { "name": "ovs-networkobj" },
+        { "name": "ovs-networkobj" },
+        { "name": "ovs-networkobj" }
+    ]'
+spec:  # specification of the pod's contents
+  containers:
+  - name: multus-multi-net-poc
+    image: "busybox"
+    command: ["top"]
+    stdin: true
+    tty: true
+```
+
+
+Create Multiple network based pod from the master node
+
+```shell
+# kubectl create -f ./pod-multi-network.yaml
+pod "multus-multi-net-poc" created
+```
+
+
+### References 
+
+- https://github.com/Intel-Corp/multus-cni
+- https://kubernetes.io/docs/concepts/api-extension/custom-resources/#custom-resources
