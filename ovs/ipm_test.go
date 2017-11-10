@@ -15,79 +15,120 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestFailGenerateHostLocalConfig(t *testing.T) {
-
 	t.Run("syntex Error", func(t *testing.T) {
 		newConfig := string(`
-			{syntex error
-			}
-			`)
+{syntex error
+}
+`)
 		result := GenerateHostLocalConfig([]byte(newConfig))
 		assert.Equal(t, "", string(result))
 	})
 	t.Run("etcd connection Error", func(t *testing.T) {
 		newConfig := string(`
-			{
-			"ipam":{
-       "type":"central-ipm",
-       "network":"10.245.0.0/16",
-       "subnetLen": 24,
-       "subnetMin": "10.245.5.0",
-       "subnetMax": "10.245.50.0",
-       "etcdURL": "127.0.0.1:9999"
-			}
-			}
-			`)
+{
+"ipam":{
+"etcdURL": "127.0.0.1:9999"
+}
+}
+`)
 		result := GenerateHostLocalConfig([]byte(newConfig))
 		assert.Equal(t, "", string(result))
 	})
 
 	t.Run("CIRD Error", func(t *testing.T) {
 		newConfig := string(`
-			{
-			"ipam":{
-       "type":"central-ipm",
-       "network":"10.245.0.0/16",
-       "subnetLen": 24,
-       "subnetMin": "10.245.5.0.1",
-       "subnetMax": "10.245.5.0.1",
-       "etcdURL": "127.0.0.1:2379"
-			}
-			}
-			`)
+{
+"ipam":{
+"type":"central-ipm",
+"subnetMin": "10.245.5.0.1",
+"subnetMax": "10.245.5.0.1",
+"etcdURL": "127.0.0.1:2379"
+}
+}
+`)
 		result := GenerateHostLocalConfig([]byte(newConfig))
 		assert.Equal(t, "", string(result))
 	})
 
+	t.Run("Success Regisger", func(t *testing.T) {
+		newConfig := string(`
+{
+"ipam":{
+"type":"central-ipm",
+"network":"10.245.0.0/16",
+"subnetLen": 24,
+"subnetMin": "10.245.5.0",
+"subnetMax": "10.245.50.0",
+"etcdURL": "127.0.0.1:2379"
+}
+}
+`)
+
+		expected := string(`
+{
+"ipam":{
+"type":"host-local",
+"subnet":"10.245.5.0/24"
+}
+}
+`)
+
+		result := GenerateHostLocalConfig([]byte(newConfig))
+		assert.Equal(t, expected, string(result))
+		//Make sure we can get the same result from same node
+		result = GenerateHostLocalConfig([]byte(newConfig))
+		assert.Equal(t, expected, string(result))
+	})
 }
 
-func TestGenerateHostLocalConfig(t *testing.T) {
-	newConfig := string(`
-			{
-			"ipam":{
-       "type":"central-ipm",
-       "network":"10.245.0.0/16",
-       "subnetLen": 24,
-       "subnetMin": "10.245.5.0",
-       "subnetMax": "10.245.50.0",
-       "etcdURL": "127.0.0.1:2379"
-			}
-			}
-			`)
+func TestGetSubnet(t *testing.T) {
+	t.Run("Next Subnet", func(t *testing.T) {
+		newConfig := string(`
+{
+"ipam":{
+"type":"central-ipm",
+"network":"10.245.0.0/16",
+"subnetLen": 24,
+"subnetMin": "10.245.5.0",
+"subnetMax": "10.245.6.0",
+"etcdURL": "127.0.0.1:2379"
+}
+}
+`)
 
-	expected := string(`
-			{
-			"ipam":{
-			"type":"host-local",
-			"subnet":"10.245.5.0/24"
-			}
-			}
-			`)
+		n := CentralNet{}
+		err := json.Unmarshal([]byte(newConfig), &n)
+		assert.NoError(t, err)
+		expected := "10.245.6.0/24"
 
-	result := GenerateHostLocalConfig([]byte(newConfig))
-	assert.Equal(t, expected, string(result))
+		subnet, _ := GetSubnet(*n.IPM, "ovs-cni-test")
+		assert.Equal(t, expected, subnet.String())
+	})
+	t.Run("Full Subnet", func(t *testing.T) {
+		newConfig := string(`
+{
+"ipam":{
+"type":"central-ipm",
+"network":"10.245.0.0/16",
+"subnetLen": 24,
+"subnetMin": "10.245.5.0",
+"subnetMax": "10.245.6.0",
+"etcdURL": "127.0.0.1:2379"
+}
+}
+		`)
+
+		n := CentralNet{}
+		err := json.Unmarshal([]byte(newConfig), &n)
+		assert.NoError(t, err)
+
+		_, err = GetSubnet(*n.IPM, "ovs-cni-test-full")
+		assert.Error(t, err)
+	})
 }
