@@ -270,7 +270,7 @@ Create Multus CNI configuration file `/etc/cni/net.d/multus-cni.conf` with below
 }
 ```
 
-You might need to copy kubeconfig file from the kubernetes master node `/.kube/config` to all minion nodes.
+You might need to copy kubeconfig file from the kubernetes master node `/home/ubuntu/.kube/config` to all minion nodes. This could allow Multus works.
 
 ### Create a Custom Resource Definition (CRD) based Network objects
 
