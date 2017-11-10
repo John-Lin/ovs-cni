@@ -58,7 +58,7 @@ func TestDeleteOVSSwitch(t *testing.T) {
 
 func TestDeleteOVSSwitch_Invalid(t *testing.T) {
 	//wait previous delete
-	time.Sleep(300 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	err := ovsSwitch.Delete()
 	assert.Error(t, err)
 }
