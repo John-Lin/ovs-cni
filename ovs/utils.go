@@ -15,9 +15,9 @@
 package main
 
 import (
-	"github.com/containernetworking/plugins/pkg/ip"
 	"encoding/binary"
 	"fmt"
+	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/vishvananda/netlink"
 	"net"
 	"strings"

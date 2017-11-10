@@ -17,14 +17,14 @@ package main
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vishvananda/netlink"
-        "io/ioutil"
+	"io/ioutil"
 	"math/rand"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-	"os"
 )
 
 func TestVxlanIfName(t *testing.T) {
