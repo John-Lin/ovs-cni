@@ -102,3 +102,25 @@ func (sw *OVSSwitch) AddVTEPs(VtepIPs []string) error {
 	}
 	return nil
 }
+
+//Operationa
+func createOVS(n *NetConf) (*OVSSwitch, *current.Interface, error) {
+	// create bridge if necessary
+	ovsbr, err := checkOVSBridgeExist(n.OVSBrName)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to setup bridge %q: %v", n.OVSBrName, err)
+	}
+
+	return ovsbr, &current.Interface{
+		Name: ovsbr.BridgeName,
+	}, nil
+}
+
+func checkOVSBridgeExist(brName string) (*OVSSwitch, error) {
+	ovsbr, err := NewOVSSwitch(brName)
+	if err != nil {
+		log.Fatal("failed to NewOVSSwitch: ", err)
+		return nil, fmt.Errorf("failed to ensure bridge %q: %v", brName, err)
+	}
+	return ovsbr, nil
+}

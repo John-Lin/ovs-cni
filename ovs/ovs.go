@@ -159,15 +159,6 @@ func ensureBridgeAddr(br *OVSSwitch, family int, ipn *net.IPNet) error {
 	return nil
 }
 
-func ensureBridge(brName string) (*OVSSwitch, error) {
-	ovsbr, err := NewOVSSwitch(brName)
-	if err != nil {
-		log.Fatal("failed to NewOVSSwitch: ", err)
-		return nil, fmt.Errorf("failed to ensure bridge %q: %v", brName, err)
-	}
-	return ovsbr, nil
-}
-
 func setupVeth(netns ns.NetNS, br *OVSSwitch, ifName string, mtu int) (*current.Interface, *current.Interface, error) {
 	contIface := &current.Interface{}
 	hostIface := &current.Interface{}
@@ -208,18 +199,6 @@ func calcGatewayIP(ipn *net.IPNet) net.IP {
 	return ip.NextIP(nid)
 }
 
-func setupBridge(n *NetConf) (*OVSSwitch, *current.Interface, error) {
-	// create bridge if necessary
-	ovsbr, err := ensureBridge(n.OVSBrName)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to setup bridge %q: %v", n.OVSBrName, err)
-	}
-
-	return ovsbr, &current.Interface{
-		Name: ovsbr.BridgeName,
-	}, nil
-}
-
 func cmdAdd(args *skel.CmdArgs) error {
 	n, cniVersion, err := loadNetConf(args.StdinData)
 	if err != nil {
@@ -236,7 +215,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 		n.IPAM.Type = "host-local"
 	}
 	// Create a Open vSwitch bridge
-	br, brInterface, err := setupBridge(n)
+	br, brInterface, err := createOVS(n)
 	if err != nil {
 		return err
 	}
