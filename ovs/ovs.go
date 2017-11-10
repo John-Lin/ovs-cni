@@ -95,7 +95,7 @@ func calcGateways(result *current.Result, n *NetConf) (*gwInfo, *gwInfo, error) 
 		// If not provided, calculate the gateway address corresponding
 		// to the selected IP address
 		if ipc.Gateway == nil && n.IsGW {
-			ipc.Gateway = calcGatewayIP(&ipc.Address)
+			ipc.Gateway = getGatewayFromIP(&ipc.Address)
 		}
 
 		// Add a default route for this family using the current
@@ -192,11 +192,6 @@ func setupVeth(netns ns.NetNS, br *OVSSwitch, ifName string, mtu int) (*current.
 	log.Infof("%s Adding a link:", br.BridgeName)
 
 	return hostIface, contIface, nil
-}
-
-func calcGatewayIP(ipn *net.IPNet) net.IP {
-	nid := ipn.IP.Mask(ipn.Mask)
-	return ip.NextIP(nid)
 }
 
 func cmdAdd(args *skel.CmdArgs) error {

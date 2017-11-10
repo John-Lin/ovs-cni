@@ -93,3 +93,10 @@ func TestIPForward(t *testing.T) {
 		assert.Equal(t, "1\n", string(content))
 	}
 }
+
+func TestGetGatewayFromIP(t *testing.T) {
+	_, input, _ := net.ParseCIDR("192.168.194.0/22")
+
+	gwIP := getGatewayFromIP(input)
+	assert.Equal(t, gwIP.String(), "192.168.192.1")
+}
