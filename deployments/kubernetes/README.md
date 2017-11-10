@@ -344,7 +344,22 @@ args: '[
 ```
 With ipam type `central-ipm` should setup a ETCD server. By default it should be set to kubernetes master server IP.
 
-Modify the etcd manifests to allow etcd server running on public in kuberneter master node (This could cause security issue)
+Create the ovs network object
+
+```shell
+# kubectl create -f ovs-network.yaml
+network "ovs-networkobj" created
+```
+
+Check the network object
+
+```shell
+# kubectl get network
+# kubectl get net
+```
+
+
+Next, modify the etcd manifests to allow etcd server running on public (from 127.0.0.1 to 0.0.0.0) in kuberneter master node (This could cause security issue)
 
 ```shell
 sudo vim /etc/kubernetes/manifests/etcd.yaml
@@ -368,19 +383,6 @@ Restart kubelet on master node
 ```
 $ sudo systemctl daemon-reload
 $ sudo systemctl restart kubelet
-```
-
-
-```shell
-# kubectl create -f ovs-network.yaml
-network "ovs-networkobj" created
-```
-
-Check the network object
-
-```shell
-# kubectl get network
-# kubectl get net
 ```
 
 
