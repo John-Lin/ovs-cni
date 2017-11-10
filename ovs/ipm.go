@@ -119,12 +119,7 @@ func registerSubnet(nodeName string, ipmconfig IPMConfig, cli clientv3.Client) (
 	return subnet, err
 }
 
-func GetSubnet(IPMConfig IPMConfig) (*net.IPNet, error) {
-	name, err := os.Hostname()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get NodeName: %v", err)
-	}
-
+func GetSubnet(IPMConfig IPMConfig, name string) (*net.IPNet, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{IPMConfig.ETCDURL},
 		DialTimeout: 5 * time.Second,
@@ -136,7 +131,7 @@ func GetSubnet(IPMConfig IPMConfig) (*net.IPNet, error) {
 
 	subnet, err := checkNodeRegister(name, *cli)
 	if err != nil {
-		fmt.Println(err)
+		return subnet, nil
 	}
 
 	//Use subnet we register befored.
@@ -154,18 +149,24 @@ func GenerateHostLocalConfig(input []byte) []byte {
 	if err := json.Unmarshal(input, &n); err != nil {
 		return []byte{}
 	}
-	subnet, err := GetSubnet(*n.IPM)
+
+	name, err := os.Hostname()
+	if err != nil {
+		return []byte{}
+	}
+
+	subnet, err := GetSubnet(*n.IPM, name)
 	if err != nil {
 		return []byte{}
 	}
 	//Generate data to localHost
 	newConfig := string(`
-			{
-			"ipam":{
-			"type":"host-local",
-			"subnet":"` + subnet.String() + `"
-			}
-			}
-			`)
+{
+"ipam":{
+"type":"host-local",
+"subnet":"` + subnet.String() + `"
+}
+}
+`)
 	return []byte(newConfig)
 }
