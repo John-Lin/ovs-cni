@@ -44,7 +44,7 @@ Vagrant.configure("2") do |config|
     # Download multus CNI sourc and build the binary
     git clone https://github.com/Intel-Corp/multus-cni.git /home/ubuntu/go/src/github.com/Intel-Corp/multus-cni
     cd ~/go/src/github.com/Intel-Corp/multus-cni
-    ./build.sh
+    ./build
     # Install CNI plugins
     sudo cp ~/go/src/github.com/John-Lin/ovs-cni/bin/ovs /opt/cni/bin
     sudo cp ~/go/src/github.com/Intel-Corp/multus-cni/bin/multus /opt/cni/bin
