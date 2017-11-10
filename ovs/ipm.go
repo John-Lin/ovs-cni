@@ -130,6 +130,10 @@ func GetSubnet(IPMConfig IPMConfig) (*net.IPNet, error) {
 		DialTimeout: 5 * time.Second,
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	subnet, err := checkNodeRegister(name, *cli)
 	if err != nil {
 		fmt.Println(err)

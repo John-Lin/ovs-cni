@@ -19,6 +19,52 @@ import (
 	"testing"
 )
 
+func TestFailGenerateHostLocalConfig(t *testing.T) {
+
+	t.Run("syntex Error", func(t *testing.T) {
+		newConfig := string(`
+			{syntex error
+			}
+			`)
+		result := GenerateHostLocalConfig([]byte(newConfig))
+		assert.Equal(t, "", string(result))
+	})
+	t.Run("etcd connection Error", func(t *testing.T) {
+		newConfig := string(`
+			{
+			"ipam":{
+       "type":"central-ipm",
+       "network":"10.245.0.0/16",
+       "subnetLen": 24,
+       "subnetMin": "10.245.5.0",
+       "subnetMax": "10.245.50.0",
+       "etcdURL": "127.0.0.1:9999"
+			}
+			}
+			`)
+		result := GenerateHostLocalConfig([]byte(newConfig))
+		assert.Equal(t, "", string(result))
+	})
+
+	t.Run("CIRD Error", func(t *testing.T) {
+		newConfig := string(`
+			{
+			"ipam":{
+       "type":"central-ipm",
+       "network":"10.245.0.0/16",
+       "subnetLen": 24,
+       "subnetMin": "10.245.5.0.1",
+       "subnetMax": "10.245.5.0.1",
+       "etcdURL": "127.0.0.1:2379"
+			}
+			}
+			`)
+		result := GenerateHostLocalConfig([]byte(newConfig))
+		assert.Equal(t, "", string(result))
+	})
+
+}
+
 func TestGenerateHostLocalConfig(t *testing.T) {
 	newConfig := string(`
 			{
