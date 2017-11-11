@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"net"
-	"os"
 	"time"
 )
 
@@ -32,9 +31,6 @@ type CentralIPM struct {
 	podname string
 	subnet	*net.IPNet
 	IPMConfig
-}
-type CentralNet struct {
-	IPM *IPMConfig `json:"ipam"`
 }
 
 type IPMConfig struct {
@@ -47,98 +43,6 @@ type IPMConfig struct {
 
 const etcdPrefix string = "/ovs-cni/networks/"
 
-func checkNodeRegister(nodeName string, cli clientv3.Client) (*net.IPNet, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := cli.Get(ctx, etcdPrefix+nodeName, clientv3.WithPrefix())
-	cancel()
-	if err != nil {
-		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
-	}
-
-	if 0 == len(resp.Kvs) {
-		return nil, nil
-	}
-
-	_, net, err := net.ParseCIDR(string(resp.Kvs[0].Value))
-	return net, err
-}
-
-func getCurrentSubNets(cli clientv3.Client) ([]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := cli.Get(ctx, etcdPrefix, clientv3.WithPrefix())
-	cancel()
-	if err != nil {
-		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
-	}
-
-	subnets := []string{}
-	for _, ev := range resp.Kvs {
-		subnets = append(subnets, string(ev.Value))
-	}
-	return subnets, nil
-}
-
-func checkSubNetRegistered(subnet string, nodeToSubnet map[string]string) bool {
-	for _, v := range nodeToSubnet{
-		if v == subnet {
-			return true
-		}
-	}
-	return false
-}
-
-func GetSubnet(IPMConfig IPMConfig, name string) (*net.IPNet, error) {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{IPMConfig.ETCDURL},
-		DialTimeout: 5 * time.Second,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	subnet, err := checkNodeRegister(name, *cli)
-	if err != nil {
-		return subnet, nil
-	}
-
-	//Use subnet we register befored.
-	if subnet != nil {
-		return subnet, nil
-	}
-
-	//Register new subnet
-	//subnet, err = registerSubnet(name, IPMConfig, *cli)
-	return subnet, err
-}
-
-func GenerateHostLocalConfig(input []byte) []byte {
-	n := CentralNet{}
-	if err := json.Unmarshal(input, &n); err != nil {
-		return []byte{}
-	}
-
-	name, err := os.Hostname()
-	if err != nil {
-		return []byte{}
-	}
-
-	subnet, err := GetSubnet(*n.IPM, name)
-	if err != nil {
-		return []byte{}
-	}
-	//Generate data to localHost
-	newConfig := string(`
-{
-"ipam":{
-"type":"host-local",
-"subnet":"` + subnet.String() + `"
-}
-}
-`)
-	return []byte(newConfig)
-}
-////////////////////
 func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
 	n := &CentralIPM{}
 	if err := json.Unmarshal(bytes, n); err != nil {
@@ -214,7 +118,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	nextSubnet := intToIP(ipStart)
 
-	nodeToSubnets, err := ipm.GetKeyValuesWithPrefix(etcdPrefix)
+	nodeToSubnets, err := ipm.GetKeyValuesWithPrefix(etcdPrefix+"subnets/")
 
 	if err != nil {
 		return fmt.Errorf("Check Subnet Exist: %v", err)
@@ -222,9 +126,8 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	for i := 1; ; i++ {
 		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipm.SubnetLen)
-		exist := checkSubNetRegistered(cidr, nodeToSubnets)
-		//we can use this subnet if no one uses it
-		if !exist {
+
+		if _, ok := nodeToSubnets[cidr]; !ok {
 			break
 		}
 		if ipEnd.String() == nextSubnet.String() {
@@ -235,7 +138,15 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(ipm.SubnetLen, 32)}
 	ipm.subnet = subnet
+
+	//store the $etcdPrefix/hostname -> subnet
 	err = ipm.PutValue(etcdPrefix+ipm.hostname, subnet.String())
+	if err != nil {
+		return err
+	}
+
+	//store the $etcdPrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
+	err = ipm.PutValue(etcdPrefix + "subnets/" +subnet.String(), ipm.hostname)
 	return err
 }
 
