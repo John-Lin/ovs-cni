@@ -204,11 +204,6 @@ func cmdAdd(args *skel.CmdArgs) error {
 		n.IsGW = true
 	}
 
-	dataToIPAM := args.StdinData
-	if n.IPAM.Type == "central-ipm" {
-		dataToIPAM = GenerateHostLocalConfig(dataToIPAM)
-		n.IPAM.Type = "host-local"
-	}
 	// Create a Open vSwitch bridge
 	br, brInterface, err := createOVS(n)
 	if err != nil {
@@ -227,7 +222,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 	}
 
 	// run the IPAM plugin and get back the config to apply
-	r, err := ipam.ExecAdd(n.IPAM.Type, dataToIPAM)
+	r, err := ipam.ExecAdd(n.IPAM.Type, args.StdinData)
 	if err != nil {
 		return err
 	}
