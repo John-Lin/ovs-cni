@@ -12,35 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package centralip
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/containernetworking/plugins/pkg/ip"
-	"github.com/vishvananda/netlink"
 	"net"
-	"strings"
 )
 
-// vxlanIfName returns formatted vxlan interface name
-func vxlanIfName(vtepIP string) string {
-	return fmt.Sprintf("vxif%s", strings.Replace(vtepIP, ".", "_", -1))
+func powTwo(times int) uint32 {
+	if times == 0 {
+		return uint32(1)
+	}
+
+	var ans uint32
+	ans = 1
+	for i := 0; i < times; i++ {
+		ans *= 2
+	}
+
+	return ans
 }
 
-// setLinkUp sets the link up
-func setLinkUp(name string) error {
-	iface, err := netlink.LinkByName(name)
-	if err != nil {
-		return err
+func ipToInt(ip net.IP) (uint32, error) {
+	if v4 := ip.To4(); v4 != nil {
+		return binary.BigEndian.Uint32(ip[12:16]), nil
 	}
-	return netlink.LinkSetUp(iface)
+	return 0, fmt.Errorf("IP should be ipv4\n")
 }
 
-func enableIPForward(family int) error {
-	if family == netlink.FAMILY_V4 {
-		return ip.EnableIP4Forward()
-	}
-	return ip.EnableIP6Forward()
+func intToIP(nn uint32) net.IP {
+	ip := make(net.IP, 4)
+	binary.BigEndian.PutUint32(ip, nn)
+	return ip
 }
 
 //We use the first IP as gateway address

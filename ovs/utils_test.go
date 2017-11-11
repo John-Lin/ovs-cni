@@ -53,30 +53,6 @@ func TestSetLinkUp_Invalid(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestPowOfTwo(t *testing.T) {
-	assert.Equal(t, uint32(2), powTwo(1))
-	assert.Equal(t, uint32(1), powTwo(0))
-	assert.Equal(t, uint32(1024), powTwo(10))
-	assert.Equal(t, uint32(2147483648), powTwo(31))
-}
-
-func TestIp2Int(t *testing.T) {
-	v4Input := net.ParseIP("127.0.0.1")
-	result, err := ipToInt(v4Input)
-	assert.NoError(t, err)
-	assert.Equal(t, uint32(2130706433), result)
-
-	v6Input := net.ParseIP("2001:0DB8:02de:0000:0000:0000:0000:0e13")
-	result, err = ipToInt(v6Input)
-	assert.Error(t, err)
-}
-
-func TestInt2IP(t *testing.T) {
-	input := intToIP(2130706433)
-	assert.Equal(t, "127.0.0.1", input.String())
-
-}
-
 func TestIPForward(t *testing.T) {
 	v4Path := "/proc/sys/net/ipv4/ip_forward"
 	v6Path := "/proc/sys/net/ipv6/conf/all/forwarding"
