@@ -55,7 +55,7 @@ func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
 /*
 	ETCD Related
 */
-func (ipm *CentralIPM) Connect(etcdUrl string) error {
+func (ipm *CentralIPM) connect(etcdUrl string) error {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{etcdUrl},
 		DialTimeout: 5 * time.Second,
@@ -65,12 +65,12 @@ func (ipm *CentralIPM) Connect(etcdUrl string) error {
 	return err
 }
 
-func (ipm *CentralIPM) PutValue(prefix, value string) (error) {
+func (ipm *CentralIPM) putValue(prefix, value string) (error) {
 	_, err := ipm.cli.Put(context.TODO(), prefix, value)
 	return err
 }
 
-func (ipm *CentralIPM) GetKeyValuesWithPrefix(key string) (map[string]string, error) {
+func (ipm *CentralIPM) getKeyValuesWithPrefix(key string) (map[string]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	resp, err := ipm.cli.Get(ctx, key, clientv3.WithPrefix())
 	cancel()
@@ -88,7 +88,7 @@ func (ipm *CentralIPM) GetKeyValuesWithPrefix(key string) (map[string]string, er
 
 func (ipm *CentralIPM) checkNodeIsRegisted() error {
 
-	keyValues, err := ipm.GetKeyValuesWithPrefix(etcdPrefix+ipm.hostname)
+	keyValues, err := ipm.getKeyValuesWithPrefix(etcdPrefix+ipm.hostname)
 	if err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	nextSubnet := intToIP(ipStart)
 
-	nodeToSubnets, err := ipm.GetKeyValuesWithPrefix(etcdPrefix+"subnets/")
+	nodeToSubnets, err := ipm.getKeyValuesWithPrefix(etcdPrefix+"subnets/")
 
 	if err != nil {
 		return fmt.Errorf("Check Subnet Exist: %v", err)
@@ -140,17 +140,17 @@ func (ipm *CentralIPM) registerSubnet() error {
 	ipm.subnet = subnet
 
 	//store the $etcdPrefix/hostname -> subnet
-	err = ipm.PutValue(etcdPrefix+ipm.hostname, subnet.String())
+	err = ipm.putValue(etcdPrefix+ipm.hostname, subnet.String())
 	if err != nil {
 		return err
 	}
 
 	//store the $etcdPrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
-	err = ipm.PutValue(etcdPrefix + "subnets/" +subnet.String(), ipm.hostname)
+	err = ipm.putValue(etcdPrefix + "subnets/" +subnet.String(), ipm.hostname)
 	return err
 }
 
-func (ipm *CentralIPM) RegisterNode() error {
+func (ipm *CentralIPM) registerNode() error {
 	//Check Node Exist
 	err := ipm.checkNodeIsRegisted()
 	if err != nil {
@@ -170,12 +170,12 @@ func (ipm *CentralIPM) Init(hostname, podname string)  error {
 	ipm.hostname = hostname
 	ipm.podname = podname
 
-	err := ipm.Connect(ipm.ETCDURL)
+	err := ipm.connect(ipm.ETCDURL)
 	if err != nil {
 		return err
 	}
 
-	err = ipm.RegisterNode()
+	err = ipm.registerNode()
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (ipm *CentralIPM) GetGateway() (string,error) {
 	}
 	
 	gwPrefix := etcdPrefix + ipm.hostname + "/gateway"
-	nodeValues, err := ipm.GetKeyValuesWithPrefix(gwPrefix)
+	nodeValues, err := ipm.getKeyValuesWithPrefix(gwPrefix)
 	if err != nil { 
 		return "",err
 	}
@@ -196,7 +196,7 @@ func (ipm *CentralIPM) GetGateway() (string,error) {
 	var gwIP string
 	if len(nodeValues) == 0 {
 		gwIP = getNextIP(ipm.subnet).String()
-		ipm.PutValue(gwPrefix, gwIP)
+		ipm.putValue(gwPrefix, gwIP)
 	} else {
 		gwIP = nodeValues[gwPrefix]
 	}
@@ -209,7 +209,7 @@ func (ipm *CentralIPM) GetAvailableIP() (string,error) {
 	}
 
 	ipPrefix := etcdPrefix + ipm.hostname + "/"
-	ipUsedToPod, err := ipm.GetKeyValuesWithPrefix(ipPrefix)
+	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(ipPrefix)
 	if err != nil { 
 		return "",err
 	}
@@ -224,7 +224,7 @@ func (ipm *CentralIPM) GetAvailableIP() (string,error) {
 		//check.
 		if _, ok := ipUsedToPod[usedIPPrefix + tmpIP.String()]; !ok {
 			availableIP = tmpIP.String()
-			ipm.PutValue(usedIPPrefix+ tmpIP.String(), ipm.podname)
+			ipm.putValue(usedIPPrefix+ tmpIP.String(), ipm.podname)
 			break
 		}
 		tmpIP = ip.NextIP(tmpIP) 
