@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Che Wei, Lin
+// Copyright (c) 2017
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ type IPMConfig struct {
 }
 
 const etcdPrefix string = "/ovs-cni/networks/"
+const subnetPrefix string = etcdPrefix + "subnets/"
 
 func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
 	n := &CentralIPM{}
@@ -50,7 +51,6 @@ func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
 	}
 	return n, nil
 }
-
 
 /*
 	ETCD Related
@@ -118,14 +118,14 @@ func (ipm *CentralIPM) registerSubnet() error {
 
 	nextSubnet := intToIP(ipStart)
 
-	nodeToSubnets, err := ipm.getKeyValuesWithPrefix(etcdPrefix+"subnets/")
+	nodeToSubnets, err := ipm.getKeyValuesWithPrefix(subnetPrefix)
 
 	if err != nil {
 		return fmt.Errorf("Check Subnet Exist: %v", err)
 	}
 
 	for i := 1; ; i++ {
-		cidr := fmt.Sprintf("%s/%d", nextSubnet.String(), ipm.SubnetLen)
+		cidr := fmt.Sprintf("%s%s/%d", subnetPrefix, nextSubnet.String(), ipm.SubnetLen)
 
 		if _, ok := nodeToSubnets[cidr]; !ok {
 			break
@@ -146,7 +146,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 	}
 
 	//store the $etcdPrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
-	err = ipm.putValue(etcdPrefix + "subnets/" +subnet.String(), ipm.hostname)
+	err = ipm.putValue(subnetPrefix +subnet.String(), ipm.hostname)
 	return err
 }
 
