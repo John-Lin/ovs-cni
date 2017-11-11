@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Che Wei, Lin
+// Copyright (c) 2017
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,120 +15,58 @@
 package main
 
 import (
-	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestFailGenerateHostLocalConfig(t *testing.T) {
-	t.Run("syntex Error", func(t *testing.T) {
-		newConfig := string(`
-{syntex error
-}
-`)
-		result := GenerateHostLocalConfig([]byte(newConfig))
-		assert.Equal(t, "", string(result))
-	})
-	t.Run("etcd connection Error", func(t *testing.T) {
-		newConfig := string(`
-{
-"ipam":{
-"etcdURL": "127.0.0.1:9999"
-}
-}
-`)
-		result := GenerateHostLocalConfig([]byte(newConfig))
-		assert.Equal(t, "", string(result))
-	})
+var n *CentralIPM
+const validData string = `
+	{
+	"network":"10.245.0.0/16",
+	"subnetLen": 24,
+	"subnetMin": "10.245.5.0",
+	"subnetMax": "10.245.50.0",
+	"etcdURL": "127.0.0.1:2379"
+	}
+	`
 
-	t.Run("CIRD Error", func(t *testing.T) {
-		newConfig := string(`
-{
-"ipam":{
-"type":"central-ipm",
-"subnetMin": "10.245.5.0.1",
-"subnetMax": "10.245.5.0.1",
-"etcdURL": "127.0.0.1:2379"
-}
-}
-`)
-		result := GenerateHostLocalConfig([]byte(newConfig))
-		assert.Equal(t, "", string(result))
-	})
+func TestGenerateCentralIPM(t *testing.T) {
+	var err error
+	n, err = generateCentralIPM([]byte(validData))
+	assert.NoError(t, err)
+	assert.Equal(t, n.ETCDURL, "127.0.0.1:2379")
 
-	t.Run("Success Regisger", func(t *testing.T) {
-		newConfig := string(`
-{
-"ipam":{
-"type":"central-ipm",
-"network":"10.245.0.0/16",
-"subnetLen": 24,
-"subnetMin": "10.245.5.0",
-"subnetMax": "10.245.50.0",
-"etcdURL": "127.0.0.1:2379"
-}
-}
-`)
-
-		expected := string(`
-{
-"ipam":{
-"type":"host-local",
-"subnet":"10.245.5.0/24"
-}
-}
-`)
-
-		result := GenerateHostLocalConfig([]byte(newConfig))
-		assert.Equal(t, expected, string(result))
-		//Make sure we can get the same result from same node
-		result = GenerateHostLocalConfig([]byte(newConfig))
-		assert.Equal(t, expected, string(result))
-	})
+	err = n.Init("test0", "pod1")
+	assert.NoError(t, err)
 }
 
-func TestGetSubnet(t *testing.T) {
-	t.Run("Next Subnet", func(t *testing.T) {
-		newConfig := string(`
-{
-"ipam":{
-"type":"central-ipm",
-"network":"10.245.0.0/16",
-"subnetLen": 24,
-"subnetMin": "10.245.5.0",
-"subnetMax": "10.245.6.0",
-"etcdURL": "127.0.0.1:2379"
+func TestGetGateway(t *testing.T) {
+	gwIP, err := n.GetGateway()
+	assert.NoError(t, err)
+	assert.Equal(t, "10.245.5.1", gwIP)
 }
-}
-`)
 
-		n := CentralNet{}
-		err := json.Unmarshal([]byte(newConfig), &n)
+func TestGetAvailableIP(t *testing.T) {
+	t.Run("First IP", func(t *testing.T) {
+		IP, err := n.GetAvailableIP()
 		assert.NoError(t, err)
-		expected := "10.245.6.0/24"
-
-		subnet, _ := GetSubnet(*n.IPM, "ovs-cni-test")
-		assert.Equal(t, expected, subnet.String())
+		assert.Equal(t, "10.245.5.2", IP)
 	})
-	t.Run("Full Subnet", func(t *testing.T) {
-		newConfig := string(`
-{
-"ipam":{
-"type":"central-ipm",
-"network":"10.245.0.0/16",
-"subnetLen": 24,
-"subnetMin": "10.245.5.0",
-"subnetMax": "10.245.6.0",
-"etcdURL": "127.0.0.1:2379"
-}
-}
-		`)
-
-		n := CentralNet{}
-		err := json.Unmarshal([]byte(newConfig), &n)
+	t.Run("Second IP", func(t *testing.T) {
+		IP, err := n.GetAvailableIP()
 		assert.NoError(t, err)
-
-		_, err = GetSubnet(*n.IPM, "ovs-cni-test-full")
-		assert.Error(t, err)
+		assert.Equal(t, "10.245.5.3", IP)
 	})
+}
+
+func TestSecondSubnet(t *testing.T) {
+	ipm, err := generateCentralIPM([]byte(validData))
+	assert.NoError(t, err)
+
+	err = ipm.Init("test1", "pod2")
+	assert.NoError(t, err)
+
+	gwIP, err := ipm.GetGateway()
+	assert.NoError(t, err)
+	assert.Equal(t, "10.245.6.1", gwIP)
 }
