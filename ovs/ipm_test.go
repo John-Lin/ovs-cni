@@ -20,12 +20,13 @@ import (
 )
 
 var n *CentralIPM
+
 const validData string = `
 	{
 	"network":"10.245.0.0/16",
 	"subnetLen": 24,
 	"subnetMin": "10.245.5.0",
-	"subnetMax": "10.245.50.0",
+	"subnetMax": "10.245.6.0",
 	"etcdURL": "127.0.0.1:2379"
 	}
 	`
@@ -36,6 +37,8 @@ func TestGenerateCentralIPM(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, n.ETCDURL, "127.0.0.1:2379")
 
+	err = n.Init("test0", "pod1")
+	assert.NoError(t, err)
 	err = n.Init("test0", "pod1")
 	assert.NoError(t, err)
 }
@@ -96,6 +99,33 @@ func TestGenerateCentralIPMInvalid(t *testing.T) {
 		n, err = generateCentralIPM([]byte(inValidData))
 		assert.NoError(t, err)
 		err = n.Init("test_invalid", "pod0")
+		assert.Error(t, err)
+	})
+	t.Run("invalid call", func(t *testing.T) {
+		const inValidData string = `
+		{
+			"network":"10.245.0.0/16",
+			"subnetLen": 24,
+			"subnetMin": "10.245.5.0",
+			"subnetMax": "10.245.50.0",
+			"etcdURL": "127.0.0.1:23791"
+		}
+		`
+		var err error
+		n, err = generateCentralIPM([]byte(inValidData))
+		assert.NoError(t, err)
+		_, err = n.GetGateway()
+		assert.Error(t, err)
+		_, err = n.GetAvailableIP()
+		assert.Error(t, err)
+
+	})
+	t.Run("no available subnet", func(t *testing.T) {
+		var err error
+		ipm, err := generateCentralIPM([]byte(validData))
+		assert.NoError(t, err)
+
+		err = ipm.Init("test3", "pod2")
 		assert.Error(t, err)
 	})
 }
