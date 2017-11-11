@@ -70,3 +70,32 @@ func TestSecondSubnet(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "10.245.6.1", gwIP)
 }
+
+func TestGenerateCentralIPMInvalid(t *testing.T) {
+	t.Run("invalid config", func(t *testing.T) {
+		const inValidData string = `
+		{
+			asdd
+		}
+		`
+		var err error
+		n, err = generateCentralIPM([]byte(inValidData))
+		assert.Error(t, err)
+	})
+	t.Run("invalid etcd", func(t *testing.T) {
+		const inValidData string = `
+		{
+			"network":"10.245.0.0/16",
+			"subnetLen": 24,
+			"subnetMin": "10.245.5.0",
+			"subnetMax": "10.245.50.0",
+			"etcdURL": "127.0.0.1:23791"
+		}
+		`
+		var err error
+		n, err = generateCentralIPM([]byte(inValidData))
+		assert.NoError(t, err)
+		err = n.Init("test_invalid", "pod0")
+		assert.Error(t, err)
+	})
+}
