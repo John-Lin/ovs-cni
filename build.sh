@@ -15,7 +15,7 @@ export GOPATH=${PWD}/gopath
 mkdir -p "${PWD}/bin"
 
 echo "Building plugins"
-PLUGINS="ovs"
+PLUGINS="ovs ipam"
 for d in $PLUGINS; do
 	if [ -d "$d" ]; then
 		plugin="$(basename "$d")"

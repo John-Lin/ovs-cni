@@ -12,24 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package centralip
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/coreos/etcd/clientv3"
 	"github.com/containernetworking/plugins/pkg/ip"
+	"github.com/coreos/etcd/clientv3"
 	"net"
 	"time"
 )
 
-
 type CentralIPM struct {
-	cli	*clientv3.Client
+	cli      *clientv3.Client
 	hostname string
-	podname string
-	subnet	*net.IPNet
+	podname  string
+	subnet   *net.IPNet
 	IPMConfig
 }
 
@@ -44,7 +43,7 @@ type IPMConfig struct {
 const etcdPrefix string = "/ovs-cni/networks/"
 const subnetPrefix string = etcdPrefix + "subnets/"
 
-func generateCentralIPM(bytes[]byte) (*CentralIPM, error) {
+func generateCentralIPM(bytes []byte) (*CentralIPM, error) {
 	n := &CentralIPM{}
 	if err := json.Unmarshal(bytes, n); err != nil {
 		return nil, fmt.Errorf("failed to load netconf: %v", err)
@@ -65,7 +64,7 @@ func (ipm *CentralIPM) connect(etcdUrl string) error {
 	return err
 }
 
-func (ipm *CentralIPM) putValue(prefix, value string) (error) {
+func (ipm *CentralIPM) putValue(prefix, value string) error {
 	_, err := ipm.cli.Put(context.TODO(), prefix, value)
 	return err
 }
@@ -78,7 +77,7 @@ func (ipm *CentralIPM) getKeyValuesWithPrefix(key string) (map[string]string, er
 		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
 	}
 
-	results :=  make(map[string]string)
+	results := make(map[string]string)
 	for _, ev := range resp.Kvs {
 		results[string(ev.Key)] = string(ev.Value)
 	}
@@ -88,7 +87,7 @@ func (ipm *CentralIPM) getKeyValuesWithPrefix(key string) (map[string]string, er
 
 func (ipm *CentralIPM) checkNodeIsRegisted() error {
 
-	keyValues, err := ipm.getKeyValuesWithPrefix(etcdPrefix+ipm.hostname)
+	keyValues, err := ipm.getKeyValuesWithPrefix(etcdPrefix + ipm.hostname)
 	if err != nil {
 		return err
 	}
@@ -121,7 +120,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 	nodeToSubnets, err := ipm.getKeyValuesWithPrefix(subnetPrefix)
 
 	if err != nil {
-		return fmt.Errorf("Check Subnet Exist: %v", err)
+		return err
 	}
 
 	for i := 1; ; i++ {
@@ -146,7 +145,7 @@ func (ipm *CentralIPM) registerSubnet() error {
 	}
 
 	//store the $etcdPrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
-	err = ipm.putValue(subnetPrefix +subnet.String(), ipm.hostname)
+	err = ipm.putValue(subnetPrefix+subnet.String(), ipm.hostname)
 	return err
 }
 
@@ -166,7 +165,7 @@ func (ipm *CentralIPM) registerNode() error {
 	return nil
 }
 
-func (ipm *CentralIPM) Init(hostname, podname string)  error {
+func (ipm *CentralIPM) Init(hostname, podname string) error {
 	ipm.hostname = hostname
 	ipm.podname = podname
 
@@ -182,15 +181,15 @@ func (ipm *CentralIPM) Init(hostname, podname string)  error {
 	return nil
 }
 
-func (ipm *CentralIPM) GetGateway() (string,error) {
+func (ipm *CentralIPM) GetGateway() (string, error) {
 	if ipm.subnet == nil {
 		return "", fmt.Errorf("You should init IPM first")
 	}
-	
+
 	gwPrefix := etcdPrefix + ipm.hostname + "/gateway"
 	nodeValues, err := ipm.getKeyValuesWithPrefix(gwPrefix)
-	if err != nil { 
-		return "",err
+	if err != nil {
+		return "", err
 	}
 
 	var gwIP string
@@ -203,31 +202,31 @@ func (ipm *CentralIPM) GetGateway() (string,error) {
 	return gwIP, nil
 }
 
-func (ipm *CentralIPM) GetAvailableIP() (string,error) {
+func (ipm *CentralIPM) GetAvailableIP() (string, error) {
 	if ipm.subnet == nil {
 		return "", fmt.Errorf("You should init IPM first")
 	}
 
 	ipPrefix := etcdPrefix + ipm.hostname + "/"
 	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(ipPrefix)
-	if err != nil { 
-		return "",err
+	if err != nil {
+		return "", err
 	}
 
-	ipRange := powTwo(32-(ipm.SubnetLen))
+	ipRange := powTwo(32 - (ipm.SubnetLen))
 	//Since the first IP is gateway, we should skip it
-	tmpIP:= ip.NextIP(getNextIP(ipm.subnet))
+	tmpIP := ip.NextIP(getNextIP(ipm.subnet))
 
 	usedIPPrefix := ipPrefix + "used/"
 	var availableIP string
-	for i:=1;i<int(ipRange);i++ {
+	for i := 1; i < int(ipRange); i++ {
 		//check.
-		if _, ok := ipUsedToPod[usedIPPrefix + tmpIP.String()]; !ok {
+		if _, ok := ipUsedToPod[usedIPPrefix+tmpIP.String()]; !ok {
 			availableIP = tmpIP.String()
-			ipm.putValue(usedIPPrefix+ tmpIP.String(), ipm.podname)
+			ipm.putValue(usedIPPrefix+tmpIP.String(), ipm.podname)
 			break
 		}
-		tmpIP = ip.NextIP(tmpIP) 
+		tmpIP = ip.NextIP(tmpIP)
 	}
 
 	return availableIP, nil

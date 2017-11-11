@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package centralip
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -45,6 +45,9 @@ func TestGenerateCentralIPM(t *testing.T) {
 
 func TestGetGateway(t *testing.T) {
 	gwIP, err := n.GetGateway()
+	assert.NoError(t, err)
+	assert.Equal(t, "10.245.5.1", gwIP)
+	gwIP, err = n.GetGateway()
 	assert.NoError(t, err)
 	assert.Equal(t, "10.245.5.1", gwIP)
 }
