@@ -7,7 +7,7 @@ You should install vagrant in your system and make sure everything goes well.
 ## Setup ovs-CNI
 - Type `vagrant up` to init a virtual machine.
 - Use ssh to connect vagrant VM via `vagrant ssh`.
-- Type following commang to build the `ovs-cni` binary and move it to CNI directory.
+- Type following command to build the `ovs-cni` binary and move it to CNI directory.
 ```
 $ cd ~/go/src/github.com/John-Lin/ovs-cni
 $ sudo cp ./bin/ovs /opt/cni/bin
@@ -46,7 +46,7 @@ and the result looks like below
         },
         {
             "name": "eth2",
-            "sandbox": "/var/run/netns/ns2"
+            "sandbox": "/var/run/netns/ns1"
         }
         ],
         "ips": [
@@ -80,8 +80,8 @@ You can use `ovs-vsctl show` to show current OVS setting and you it looks like
     ovs_version: "2.5.2"
 ```
 
-In this setting, the OVS will connect to ns2 via `veth` technology and you can also check
-check the namepsace's networking settingm, you can use `sudo ip netns exec ns1 ifconfig` to see its IP config.
+In this setting, the OVS will connect to ns1 via `veth` technology and you can also check
+check the namepsace's networking setting, you can use `sudo ip netns exec ns1 ifconfig` to see its IP config.
 
 ```
 eth2      Link encap:Ethernet  HWaddr 0a:58:0a:f4:01:0a
