@@ -5,7 +5,7 @@ import (
 	"os"
 	//	"strings"
 	"fmt"
-	"github.com/John-Lin/ovs-cni/ipam/centralip"
+	"github.com/John-Lin/ovs-cni/ipam/centralip/backend"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
