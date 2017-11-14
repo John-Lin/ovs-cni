@@ -24,6 +24,12 @@ import (
 	"time"
 )
 
+type CentralNet struct {
+	Name       string      `json:"name"`
+	CNIVersion string      `json:"cniVersion"`
+	IPM        *CentralIPM `json:"ipam"`
+}
+
 type CentralIPM struct {
 	cli      *clientv3.Client
 	hostname string
@@ -33,6 +39,7 @@ type CentralIPM struct {
 }
 
 type IPMConfig struct {
+	Type      string `json:"type"`
 	Network   string `json:"network"`
 	SubnetLen int    `json:"subnetLen"`
 	SubnetMin string `json:"subnetMin"`
@@ -43,12 +50,12 @@ type IPMConfig struct {
 const etcdPrefix string = "/ovs-cni/networks/"
 const subnetPrefix string = etcdPrefix + "subnets/"
 
-func generateCentralIPM(bytes []byte) (*CentralIPM, error) {
-	n := &CentralIPM{}
+func GenerateCentralIPM(bytes []byte) (*CentralIPM, string, error) {
+	n := &CentralNet{}
 	if err := json.Unmarshal(bytes, n); err != nil {
-		return nil, fmt.Errorf("failed to load netconf: %v", err)
+		return nil, "", fmt.Errorf("failed to load netconf: %v", err)
 	}
-	return n, nil
+	return n.IPM, n.CNIVersion, nil
 }
 
 /*
@@ -202,15 +209,16 @@ func (ipm *CentralIPM) GetGateway() (string, error) {
 	return gwIP, nil
 }
 
-func (ipm *CentralIPM) GetAvailableIP() (string, error) {
+func (ipm *CentralIPM) GetAvailableIP() (string, *net.IPNet, error) {
+	ipnet := &net.IPNet{}
 	if ipm.subnet == nil {
-		return "", fmt.Errorf("You should init IPM first")
+		return "", ipnet, fmt.Errorf("You should init IPM first")
 	}
 
 	ipPrefix := etcdPrefix + ipm.hostname + "/"
 	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(ipPrefix)
 	if err != nil {
-		return "", err
+		return "", ipnet, err
 	}
 
 	ipRange := powTwo(32 - (ipm.SubnetLen))
@@ -229,5 +237,15 @@ func (ipm *CentralIPM) GetAvailableIP() (string, error) {
 		tmpIP = ip.NextIP(tmpIP)
 	}
 
-	return availableIP, nil
+	//We need to generate a net.IPnet object which contains the IP and Mask.
+	//We use ParseCIDR to create the net.IPnet object and assign IP back to it.
+	cidr := fmt.Sprintf("%s/%d", availableIP, ipm.SubnetLen)
+	var ip net.IP
+	ip, ipnet, err = net.ParseCIDR(cidr)
+	if err != nil {
+		return "", ipnet, err
+	}
+
+	ipnet.IP = ip
+	return availableIP, ipnet, nil
 }
