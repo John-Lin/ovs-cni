@@ -71,6 +71,10 @@ func (ipm *CentralIPM) connect(etcdUrl string) error {
 	return err
 }
 
+func (ipm *CentralIPM) deleteKey(prefix string) error {
+	_, err := ipm.cli.Delete(context.TODO(), prefix)
+	return err
+}
 func (ipm *CentralIPM) putValue(prefix, value string) error {
 	_, err := ipm.cli.Put(context.TODO(), prefix, value)
 	return err
@@ -215,8 +219,8 @@ func (ipm *CentralIPM) GetAvailableIP() (string, *net.IPNet, error) {
 		return "", ipnet, fmt.Errorf("You should init IPM first")
 	}
 
-	ipPrefix := etcdPrefix + ipm.hostname + "/"
-	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(ipPrefix)
+	usedIPPrefix := etcdPrefix + ipm.hostname + "/used/"
+	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(usedIPPrefix)
 	if err != nil {
 		return "", ipnet, err
 	}
@@ -225,7 +229,6 @@ func (ipm *CentralIPM) GetAvailableIP() (string, *net.IPNet, error) {
 	//Since the first IP is gateway, we should skip it
 	tmpIP := ip.NextIP(getNextIP(ipm.subnet))
 
-	usedIPPrefix := ipPrefix + "used/"
 	var availableIP string
 	for i := 1; i < int(ipRange); i++ {
 		//check.
@@ -248,4 +251,22 @@ func (ipm *CentralIPM) GetAvailableIP() (string, *net.IPNet, error) {
 
 	ipnet.IP = ip
 	return availableIP, ipnet, nil
+}
+
+func (ipm *CentralIPM) DeleteIPByName(name string) error {
+	//get all used ip address and try to matches it id.
+	//ipm.deleteKey(podName)a
+	usedIPPrefix := etcdPrefix + ipm.hostname + "/used/"
+	ipUsedToPod, err := ipm.getKeyValuesWithPrefix(usedIPPrefix)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range ipUsedToPod {
+		if v == ipm.podname {
+			err := ipm.deleteKey(k)
+			return err
+		}
+	}
+	return fmt.Errorf("There aren't any infomation about %s", ipm.hostname)
 }

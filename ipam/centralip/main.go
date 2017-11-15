@@ -4,7 +4,6 @@ import (
 	"net"
 	"os"
 	//	"strings"
-	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -29,11 +28,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 
 	podName := args.ContainerID
 	err = n.Init(hostname, podName)
+	if err != nil {
+		return err
+	}
 
 	gwIP, err := n.GetGateway()
 	_, IP, err := n.GetAvailableIP()
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	i := net.ParseIP(gwIP)
@@ -53,6 +55,28 @@ func cmdAdd(args *skel.CmdArgs) error {
 	result.Routes = []*types.Route{}
 	return types.PrintResult(result, cniversion)
 }
+
 func cmdDel(args *skel.CmdArgs) error {
+	n, _, err := centralip.GenerateCentralIPM(args.StdinData)
+	if err != nil {
+		return err
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		return err
+	}
+
+	podName := args.ContainerID
+	err = n.Init(hostname, podName)
+	if err != nil {
+		return err
+	}
+
+	err = n.DeleteIPByName(podName)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
