@@ -72,6 +72,16 @@ func TestGetAvailableIP(t *testing.T) {
 		assert.Equal(t, "10.245.5.3/24", ipNet.String())
 		assert.Equal(t, "10.245.5.3", ip)
 	})
+	t.Run("remove first IP", func(t *testing.T) {
+		err := n.DeleteIPByName("pod1")
+		assert.NoError(t, err)
+	})
+	t.Run("Fetch IP again", func(t *testing.T) {
+		ip, ipNet, err := n.GetAvailableIP()
+		assert.NoError(t, err)
+		assert.Equal(t, "10.245.5.2/24", ipNet.String())
+		assert.Equal(t, "10.245.5.2", ip)
+	})
 }
 
 func TestSecondSubnet(t *testing.T) {
