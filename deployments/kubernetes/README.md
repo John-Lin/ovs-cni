@@ -332,7 +332,7 @@ args: '[
         "isDefaultGateway": true,
         "ipMasq": true,
         "ipam":{
-            "type":"central-ipm",
+            "type":"centralip",
             "network":"10.245.0.0/16",
             "subnetLen": 24,
             "subnetMin": "10.245.5.0",
@@ -342,7 +342,7 @@ args: '[
         }
 ]'
 ```
-With ipam type `central-ipm` should setup a ETCD server. By default it should be set to kubernetes master server IP.
+With ipam type `centralip` should setup a ETCD server. By default it should be set to kubernetes master server IP.
 
 Create the ovs network object
 
