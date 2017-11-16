@@ -12,7 +12,7 @@ notifications:
 before_install:
     - sudo apt-get install -y git build-essential openvswitch-switch
     - go get -u github.com/kardianos/govendor
-    - go ge^Cgithub.com/pierrre/gotestcover
+    - go get -u github.com/pierrre/gotestcover
     - docker run -d -p 2379:2379 --name etcd quay.io/coreos/etcd:v3.2  /usr/local/bin/etcd  --listen-client-urls http://0.0.0.0:2379 --advertise-client-urls http://0.0.0.0:2379
 install: 
     - govendor sync
