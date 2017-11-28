@@ -38,11 +38,9 @@ Vagrant.configure("2") do |config|
     ./build.sh
     sudo cp ~/go/src/github.com/John-Lin/ovs-cni/bin/ovs /opt/cni/bin
     sudo cp ~/go/src/github.com/John-Lin/ovs-cni/bin/centralip /opt/cni/bin
-    sudo mkdir -p /opt/
-    cd /opt/
-    curl -L https://github.com/coreos/etcd/releases/download/v3.0.7/etcd-v3.0.7-linux-amd64.tar.gz -o etcd-v3.0.7-linux-amd64.tar.gz
-    sudo tar xzvf etcd-v3.0.7-linux-amd64.tar.gz
-    sudo mv etcd-v3.0.7-linux-amd64 etcd
+    wget --quiet https://github.com/coreos/etcd/releases/download/v3.0.7/etcd-v3.0.7-linux-amd64.tar.gz
+    sudo tar xzvf etcd-v3.0.7-linux-amd64.tar.gz -C /opt/
+    sudo mv /opt/etcd-v3.0.7-linux-amd64 /opt/etcd
     sudo cp /tmp/etcd.service /etc/systemd/system/etcd.service
     sudo sudo systemctl enable etcd
     sudo sudo systemctl start etcd
