@@ -61,6 +61,17 @@ func (sw *OVSSwitch) addPort(ifName string) error {
 	return nil
 }
 
+// delPort for asking OVSDB driver to delete the port
+func (sw *OVSSwitch) delPort(ifName string) error {
+	if !sw.ovsdb.IsPortNamePresent(ifName) {
+		err := sw.ovsdb.DeletePort(ifName)
+		if err != nil {
+			return fmt.Errorf("Error deleting the port, Err: %v", err)
+		}
+	}
+	return nil
+}
+
 // SetCtrl for seting up OpenFlow controller for ovs bridge
 func (sw *OVSSwitch) SetCtrl(hostport string) error {
 	host, port, err := net.SplitHostPort(hostport)
