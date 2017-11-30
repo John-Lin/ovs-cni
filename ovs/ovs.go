@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
 	"runtime"
 	"syscall"
 
@@ -23,6 +26,7 @@ import (
 )
 
 const defaultBrName = "br0"
+const defaultDataDir = "/var/lib/cni/networks"
 
 type NetConf struct {
 	types.NetConf
@@ -45,6 +49,61 @@ func init() {
 	// since namespace ops (unshare, setns) are done for a single thread, we
 	// must ensure that the goroutine does not jump from OS thread to thread
 	runtime.LockOSThread()
+}
+
+func newStore(network string) (string, error) {
+	dir := filepath.Join(defaultDataDir, network)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func reserve(sandbox, ovsIfaceName, dataDir string) (bool, error) {
+	fname := getMD5Hash(sandbox)
+	fpath := filepath.Join(dataDir, fname)
+
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_EXCL|os.O_CREATE, 0644)
+	if err != nil {
+		return false, err
+	}
+
+	if _, err := f.WriteString(ovsIfaceName); err != nil {
+		f.Close()
+		os.Remove(f.Name())
+		return false, err
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(f.Name())
+		return false, err
+	}
+	return true, nil
+}
+
+func release(br *OVSSwitch, sandbox string) (bool, error) {
+	fname := getMD5Hash(sandbox)
+
+	fpath := filepath.Join(defaultDataDir, "ovs", fname)
+
+	bufData, err := ioutil.ReadFile(fpath)
+	if err != nil {
+		return false, err
+	}
+
+	ovsIface := string(bufData)
+
+	log.Infof("delete port from ovs %s", ovsIface)
+	err = br.delPort(ovsIface)
+	if err != nil {
+		log.Fatalf("failed to delPort from switch %v", err)
+		return false, err
+	}
+
+	if err := os.Remove(fpath); err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 func loadNetConf(bytes []byte) (*NetConf, string, error) {
@@ -200,6 +259,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
+	dataDir, err := newStore("ovs")
+	if err != nil {
+		return err
+	}
+
 	if n.IsDefaultGW {
 		n.IsGW = true
 	}
@@ -219,6 +283,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 	hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, 1400)
 	if err != nil {
 		return err
+	}
+
+	reserved, err := reserve(args.Netns, hostInterface.Name, dataDir)
+	if err != nil {
+		return err
+	}
+	if !reserved {
+		return fmt.Errorf("requested interface name is not available")
 	}
 
 	// run the IPAM plugin and get back the config to apply
@@ -331,6 +403,19 @@ func cmdDel(args *skel.CmdArgs) error {
 		return nil
 	}
 
+	// Create a Open vSwitch bridge
+	br, _, err := createOVS(n)
+	if err != nil {
+		return err
+	}
+
+	released, err := release(br, args.Netns)
+	if err != nil {
+		return err
+	}
+	if !released {
+		return fmt.Errorf("released ovs interface is not available")
+	}
 	// There is a netns so try to clean up. Delete can be called multiple times
 	// so don't return an error if the device is already removed.
 	// If the device isn't there then don't try to clean up IP masq either.
