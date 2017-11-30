@@ -15,11 +15,14 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
-	"github.com/containernetworking/plugins/pkg/ip"
-	"github.com/vishvananda/netlink"
 	"net"
 	"strings"
+
+	"github.com/containernetworking/plugins/pkg/ip"
+	"github.com/vishvananda/netlink"
 )
 
 // vxlanIfName returns formatted vxlan interface name
@@ -47,4 +50,10 @@ func enableIPForward(family int) error {
 func getNextIP(ipn *net.IPNet) net.IP {
 	nid := ipn.IP.Mask(ipn.Mask)
 	return ip.NextIP(nid)
+}
+
+func getMD5Hash(text string) string {
+	hasher := md5.New()
+	hasher.Write([]byte(text))
+	return hex.EncodeToString(hasher.Sum(nil))
 }
