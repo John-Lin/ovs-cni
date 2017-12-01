@@ -60,13 +60,6 @@ func (s *Store) ReleaseByID(id string) (string, error) {
 		return "", err
 	}
 
-	// log.Infof("delete port from ovs %s", ovsIface)
-	// err = br.delPort(ovsIface)
-	// if err != nil {
-	// 	log.Fatalf("failed to delPort from switch %v", err)
-	// 	return "", err
-	// }
-
 	if err := os.Remove(fpath); err != nil {
 		return "", err
 	}
