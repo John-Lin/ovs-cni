@@ -9,7 +9,6 @@ import (
 
 	"github.com/John-Lin/ovsdb"
 	"github.com/containernetworking/cni/pkg/types/current"
-	log "github.com/sirupsen/logrus"
 )
 
 // OVSSwitch is a bridge instance
@@ -27,7 +26,6 @@ func NewOVSSwitch(bridgeName string) (*OVSSwitch, error) {
 	sw.BridgeName = bridgeName
 
 	sw.ovsdb = ovsdb.NewOvsDriverWithUnix(bridgeName)
-	log.Infoln("Adding a switch:", sw.BridgeName)
 
 	// Check if port is already part of the OVS and add it
 	if !sw.ovsdb.IsPortNamePresent(bridgeName) {
@@ -115,7 +113,12 @@ func (sw *OVSSwitch) AddVTEPs(VtepIPs []string) error {
 	return nil
 }
 
-//Operationa
+// OVSByName is a alias for finding a ovs by name and returns a pointer to the object.
+func OVSByName(brName string) (*OVSSwitch, error) {
+	return NewOVSSwitch(brName)
+}
+
+// createOVS is a helper function for create a ovs object
 func createOVS(n *NetConf) (*OVSSwitch, *current.Interface, error) {
 	// create bridge if necessary
 	ovsbr, err := NewOVSSwitch(n.OVSBrName)
