@@ -266,7 +266,11 @@ Create Multus CNI configuration file `/etc/cni/net.d/multus-cni.conf` with below
 {
     "name": "minion-cni-network",
     "type": "multus",
-    "kubeconfig": "/home/ubuntu/.kube/config"
+    "kubeconfig": "/home/ubuntu/.kube/config",
+    "delegates": [{
+        "type": "ovs",
+        "masterplugin": true
+    }]
 }
 ```
 
@@ -321,14 +325,13 @@ Save the below following YAML to ovs-network.yaml
 apiVersion: "kubernetes.com/v1"
 kind: Network
 metadata:
-  name: ovs-central-ipam-networkobj
+  name: ovs-net
 plugin: ovs
 args: '[
         {
+        "name": "myovsnet",
+        "type": "ovs",
         "ovsBridge":"br0",
-        "vtepIPs":[
-            "10.0.0.3"
-        ],
         "isDefaultGateway": true,
         "ipMasq": true,
         "ipam":{
@@ -348,7 +351,7 @@ Create the ovs network object
 
 ```shell
 # kubectl create -f ovs-network.yaml
-network "ovs-networkobj" created
+network "ovs-net" created
 ```
 
 Check the network object
@@ -389,7 +392,7 @@ $ sudo systemctl restart kubelet
 ### Configuring Pod to use the CRD Network objects
 
 
-Save the below following YAML to pod-multi-network.yaml. In this case flannel-conf network object act as the primary network.
+Save the below following YAML to pod-multi-network.yaml. In this case `flannel-conf` network object act as the primary network.
 
 ```yaml
 # cat pod-multi-network.yaml 
@@ -399,9 +402,8 @@ metadata:
   name: multus-multi-net-poc
   annotations:
     networks: '[  
-        { "name": "ovs-networkobj" },
-        { "name": "ovs-networkobj" },
-        { "name": "ovs-networkobj" }
+        { "name": "ovs-net" },
+        { "name": "flannel-conf" }
     ]'
 spec:  # specification of the pod's contents
   containers:
@@ -412,6 +414,11 @@ spec:  # specification of the pod's contents
     tty: true
 ```
 
+For setting up `flannel-conf` please see
+
+https://github.com/coreos/flannel/blob/4c057be1f97a38960436834f144b0bd824d7f76e/README.md#multi-network-mode-experimental
+
+https://github.com/coreos/flannel/blob/master/Documentation/running.md
 
 Create Multiple network based pod from the master node
 
