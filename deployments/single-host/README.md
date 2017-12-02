@@ -27,7 +27,7 @@ $ sudo ip netns add ns1
 ```
 
 ## Start CNI
-We have setup ovs-CNI environement and some testing namespacese, we can use following command to inform CNI to add a network for namespaces.
+We have setup `ovs-cni` environement and testing namespace(ns1), we can use following command to inform `ovs-cni` to add a network for the namespace.
 
 ```
 $cd ~/cni
@@ -80,8 +80,7 @@ You can use `ovs-vsctl show` to show current OVS setting and you it looks like
     ovs_version: "2.5.2"
 ```
 
-In this setting, the OVS will connect to ns1 via `veth` technology and you can also check
-check the namepsace's networking setting, you can use `sudo ip netns exec ns1 ifconfig` to see its IP config.
+In this setting, the OVS will connect to ns1 via `veth` technology and you can also check the namepsace's networking setting, you can use `sudo ip netns exec ns1 ifconfig` to see its IP config.
 
 ```
 eth2      Link encap:Ethernet  HWaddr 0a:58:0a:f4:01:0a
