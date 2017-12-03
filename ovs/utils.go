@@ -16,10 +16,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/containernetworking/plugins/pkg/ip"
-	"github.com/vishvananda/netlink"
 	"net"
 	"strings"
+
+	"github.com/containernetworking/plugins/pkg/ip"
+	"github.com/vishvananda/netlink"
 )
 
 // vxlanIfName returns formatted vxlan interface name

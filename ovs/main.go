@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/John-Lin/ovs-cni/ovs/backend/disk"
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	"github.com/containernetworking/cni/pkg/types/current"
@@ -23,6 +24,8 @@ import (
 )
 
 const defaultBrName = "br0"
+
+const defaultDataDir = "/var/lib/cni/networks"
 
 type NetConf struct {
 	types.NetConf
@@ -189,7 +192,7 @@ func setupVeth(netns ns.NetNS, br *OVSSwitch, ifName string, mtu int) (*current.
 	if err != nil {
 		log.Fatalf("failed to addPort switch - host: %v", err)
 	}
-	log.Infof("%s Adding a link:", br.BridgeName)
+	log.Infof("Adding a port for %s:", br.BridgeName)
 
 	return hostIface, contIface, nil
 }
@@ -210,6 +213,11 @@ func cmdAdd(args *skel.CmdArgs) error {
 		return err
 	}
 
+	store, err := disk.New(n.OVSBrName, defaultDataDir)
+	if err != nil {
+		return err
+	}
+
 	netns, err := ns.GetNS(args.Netns)
 	if err != nil {
 		return fmt.Errorf("failed to open netns %q: %v", args.Netns, err)
@@ -219,6 +227,14 @@ func cmdAdd(args *skel.CmdArgs) error {
 	hostInterface, containerInterface, err := setupVeth(netns, br, args.IfName, 1400)
 	if err != nil {
 		return err
+	}
+
+	reserved, err := store.Reserve(args.ContainerID, hostInterface.Name)
+	if err != nil {
+		return err
+	}
+	if !reserved {
+		return fmt.Errorf("requested interface name is not available")
 	}
 
 	// run the IPAM plugin and get back the config to apply
@@ -330,7 +346,26 @@ func cmdDel(args *skel.CmdArgs) error {
 	if args.Netns == "" {
 		return nil
 	}
+	store, err := disk.New(n.OVSBrName, defaultDataDir)
+	if err != nil {
+		return err
+	}
+	br, err := OVSByName(n.OVSBrName)
+	if err != nil {
+		return err
+	}
 
+	ovsInterface, err := store.ReleaseByID(args.ContainerID)
+	if err != nil {
+		return fmt.Errorf("released ovs interface is not available")
+	}
+
+	log.Infof("delete port from ovs interface name: %s", ovsInterface)
+	err = br.delPort(ovsInterface)
+	if err != nil {
+		log.Fatalf("failed to delPort from switch %v", err)
+		return err
+	}
 	// There is a netns so try to clean up. Delete can be called multiple times
 	// so don't return an error if the device is already removed.
 	// If the device isn't there then don't try to clean up IP masq either.
