@@ -15,19 +15,20 @@ func main() {
 	skel.PluginMain(cmdAdd, cmdDel, version.All)
 }
 
+/*
+
+type CmdArgs struct {
+	ContainerID string
+	Netns       string
+	IfName      string
+	Args        string
+	Path        string
+	StdinData   []byte
+}
+
+*/
 func cmdAdd(args *skel.CmdArgs) error {
-	n, cniversion, err := centralip.GenerateCentralIPM(args.StdinData)
-	if err != nil {
-		return err
-	}
-
-	hostname, err := os.Hostname()
-	if err != nil {
-		return err
-	}
-
-	podName := args.ContainerID
-	err = n.Init(hostname, podName)
+	n, err, cniversion := centralip.GenerateCentralIPM(args)
 	if err != nil {
 		return err
 	}
@@ -57,23 +58,12 @@ func cmdAdd(args *skel.CmdArgs) error {
 }
 
 func cmdDel(args *skel.CmdArgs) error {
-	n, _, err := centralip.GenerateCentralIPM(args.StdinData)
+	n, _, err := centralip.GenerateCentralIPM(args)
 	if err != nil {
 		return err
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		return err
-	}
-
-	podName := args.ContainerID
-	err = n.Init(hostname, podName)
-	if err != nil {
-		return err
-	}
-
-	err = n.DeleteIPByName(podName)
+	err = n.Delete()
 	if err != nil {
 		return err
 	}
