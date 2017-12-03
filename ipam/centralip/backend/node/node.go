@@ -173,22 +173,6 @@ func (node *NodeIPM) registerNode() error {
 	return nil
 }
 
-func (node *NodeIPM) Init(hostname, podname string) error {
-	node.hostname = hostname
-	node.podname = podname
-
-	err := node.connect(node.config.ETCDURL)
-	if err != nil {
-		return err
-	}
-
-	err = node.registerNode()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (node *NodeIPM) GetGateway() (string, error) {
 	if node.subnet == nil {
 		return "", fmt.Errorf("You should init IPM first")
