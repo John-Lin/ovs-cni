@@ -1,7 +1,7 @@
 # Kubernetes in vagrant
 
 This document intends to give a instruction about how to create a Kubernetes cluster with ovs-cni in vagrant.
-The Kubernetes cluster is created by kubeadm but still has some part should be handled it by manually. 
+The Kubernetes cluster is created by kubeadm but still has some parts should be handled by manually. 
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ The Kubernetes cluster is created by kubeadm but still has some part should be h
 
 ### Before vagrant up
 
-Check the default network interface on your machine. Because we used the bridged networking in Virtualbox which uses a device driver on your **host** system.
+Check the default network interface on your machine. Because we use the bridged networking in Virtualbox which uses a device driver on your **host** system.
 
 In my case the default network interface is **en0**. Mdify to your default network interface before go to next step.
 
@@ -48,9 +48,12 @@ Use `vagrant ssh HOSTNAME` to ssh into virtaul machine. **HOSTNAME** could be de
 
 Check the IP on the each virtual machine. Choose a network interface that has just attach to Virtualbox's bridge.
 
-In my case the `enp0s8` is the one that attached to Virtualbox's bridge. Use `192.168.0.107` as our Kubernetes master IP address.
+In my case the `enp0s8` is the one that attached to Virtualbox's bridge.
 
-On host1
+#### On host1
+
+We use `192.168.0.107` as our Kubernetes master IP address.
+
 ```
 $ vagrant ssh host1
 
@@ -74,9 +77,24 @@ enp0s8    Link encap:Ethernet  HWaddr 08:00:27:27:ba:02
           RX bytes:9514803 (9.5 MB)  TX bytes:62806152 (62.8 MB)
 ```
 
-And use `192.168.0.108` as our Kubernetes node/minion IP address.
+Edit and add the `--node-ip` option by appending `Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.107"` in the file `10-kubeadm.conf`.
 
-On host2
+```
+sudo vim /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+[Service]
+...
+...
+..
+Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.107"
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_NETWORK_ARGS $KUBELET_DNS_ARGS $KUBELET_AUTHZ_ARGS $KUBELET_CADVISOR_ARGS $KUBELET_CERTIFICATE_ARGS $KUBELET_EXTRA_ARGS
+```
+
+#### On host2
+
+We use `192.168.0.108` as our Kubernetes node/minion IP address.
+
 ```
 $ vagrant ssh host2
 
@@ -100,11 +118,7 @@ enp0s8    Link encap:Ethernet  HWaddr 08:00:27:f2:36:fb
           RX bytes:45148814 (45.1 MB)  TX bytes:9918777 (9.9 MB)
 ```
 
-next, edit and add the `--node-ip` option in the configuration of `10-kubeadm.conf`
-
-append `Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.108"` in the file on **BOTH virtual machines**
-
-The `192.168.0.108` is our node/minion IP address.
+Edit and add the `--node-ip` option by appending `Environment="KUBELET_EXTRA_ARGS=--node-ip=192.168.0.108"` in the file `10-kubeadm.conf`.
 
 ```
 sudo vim /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
@@ -144,7 +158,7 @@ as root:
   kubeadm join --token <token> <master-ip>:<master-port> --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
-To join the machines use `kubeadm join` on host2.
+Use `kubeadm join` on host2 to join the machine.
 
 ### After join number of machines by running kubeadm join
 
@@ -312,7 +326,8 @@ kubectl create command for the Custom Resource Definition
 customresourcedefinition "network.kubernetes.com" created
 ```
 
-(kubectl get command to check the Network CRD creation)
+kubectl get command to check the Network CRD creation
+
 ```sh
 # kubectl get CustomResourceDefinition
 # kubectl get crd
@@ -321,6 +336,7 @@ networks.kubernetes.com   CustomResourceDefinition.v1beta1.apiextensions.k8s.io
 ```
 
 Save the below following YAML to ovs-network.yaml
+
 ```yaml
 apiVersion: "kubernetes.com/v1"
 kind: Network
@@ -345,6 +361,7 @@ args: '[
         }
 ]'
 ```
+
 With ipam type `centralip` should setup a ETCD server. By default it should be set to kubernetes master server IP.
 
 Create the ovs network object
@@ -360,7 +377,6 @@ Check the network object
 # kubectl get network
 # kubectl get net
 ```
-
 
 Next, modify the etcd manifests to allow etcd server running on public (from 127.0.0.1 to 0.0.0.0) in kuberneter master node (This could cause security issue)
 
@@ -388,11 +404,39 @@ $ sudo systemctl daemon-reload
 $ sudo systemctl restart kubelet
 ```
 
+Save the below following YAML to flannel-network.yaml
+
+```
+apiVersion: "kubernetes.com/v1"
+kind: Network
+metadata:
+  name: flannel-networkobj
+plugin: flannel
+args: '[
+        {
+                "delegate": {
+                        "isDefaultGateway": true
+                }
+        }
+]'
+```
+
+Create the flannel network object
+
+```
+# kubectl create -f flannel-network.yaml
+network "flannel-networkobj" created
+```
+
+```
+# kubectl get network
+NAME                 KIND                        ARGS                                               PLUGIN
+flannel-networkobj   Network.v1.kubernetes.com   [ { "delegate": { "isDefaultGateway": true } } ]   flannel
+```
 
 ### Configuring Pod to use the CRD Network objects
 
-
-Save the below following YAML to pod-multi-network.yaml. In this case `flannel-conf` network object act as the primary network.
+Save the below following YAML to pod-multi-network.yaml. In this case `ovs-net` network object act as the primary network.
 
 ```yaml
 # cat pod-multi-network.yaml 
