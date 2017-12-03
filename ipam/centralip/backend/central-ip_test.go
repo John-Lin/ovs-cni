@@ -17,6 +17,7 @@ package centralip
 import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
@@ -75,6 +76,10 @@ var validClusterData = skel.CmdArgs{
 }
 
 func TestGenerateCentralIPM(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	t.Run("Node instance", func(t *testing.T) {
 		n, err, version := GenerateCentralIPM(&validNodeData)
 		assert.NoError(t, err)
@@ -90,6 +95,10 @@ func TestGenerateCentralIPM(t *testing.T) {
 }
 
 func TestGenerateInvalidCentralIPM(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	n, err, _ := GenerateCentralIPM(&InvalidData)
 	assert.Error(t, err)
 	assert.Nil(t, n)

@@ -17,6 +17,7 @@ package cluster
 import (
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
@@ -30,6 +31,10 @@ var validData = utils.IPMConfig{
 }
 
 func TestNewNode(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	node, err = New("pod1", &validData)
 	assert.NoError(t, err)
 	assert.NotNil(t, node)
@@ -37,12 +42,20 @@ func TestNewNode(t *testing.T) {
 }
 
 func TestGetGateway(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	gwIP, err := node.GetGateway()
 	assert.NoError(t, err)
 	assert.Equal(t, "", gwIP)
 }
 
 func TestGetAvailableIP(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	t.Run("First IP", func(t *testing.T) {
 		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
@@ -71,6 +84,10 @@ func TestGetAvailableIP(t *testing.T) {
 }
 
 func TestSecondHost(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	node2, err := New("pod2", &validData)
 	assert.NoError(t, err)
 
@@ -85,6 +102,10 @@ func TestSecondHost(t *testing.T) {
 }
 
 func TestGenerateCentralIPMInvalid(t *testing.T) {
+	if _, defined := os.LookupEnv("TEST_ETCD"); !defined {
+		t.SkipNow()
+		return
+	}
 	t.Run("invalid etcd", func(t *testing.T) {
 		var InvalidETCD = utils.IPMConfig{
 			Network: "10.123.0.0/16",
