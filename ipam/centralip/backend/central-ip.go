@@ -17,11 +17,11 @@ package centralip
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	// "github.com/John-Lin/ovs-cni/ipam/centralip/backend/cluster"
+	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/cluster"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/node"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/containernetworking/cni/pkg/skel"
+	"os"
 )
 
 type CentralNet struct {
@@ -40,10 +40,10 @@ func GenerateCentralIPM(args *skel.CmdArgs) (utils.CentralIPM, error, string) {
 	case "node":
 		hostname, _ := os.Hostname()
 		node, err := node.New(args.ContainerID, hostname, n.IPM)
-
 		return node, err, n.CNIVersion
 	case "cluster":
-		return nil, nil, ""
+		node, err := cluster.New(args.ContainerID, n.IPM)
+		return node, err, n.CNIVersion
 	default:
 		return nil, fmt.Errorf("Unsupport IPM type %s", n.IPM.Type), ""
 	}
