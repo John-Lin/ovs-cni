@@ -15,37 +15,33 @@
 package centralip
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	// "github.com/John-Lin/ovs-cni/ipam/centralip/backend/cluster"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/node"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/containernetworking/cni/pkg/skel"
-	"github.com/containernetworking/plugins/pkg/ip"
-	"github.com/coreos/etcd/clientv3"
-	"net"
-	"time"
 )
 
 type CentralNet struct {
-	Name       string     `json:"name"`
-	CNIVersion string     `json:"cniVersion"`
-	IPM        *IPMConfig `json:"ipam"`
+	Name       string           `json:"name"`
+	CNIVersion string           `json:"cniVersion"`
+	IPM        *utils.IPMConfig `json:"ipam"`
 }
 
-func GenerateCentralIPM(args *skel.CmdArgs) (*CentralIPM, error, string) {
+func GenerateCentralIPM(args *skel.CmdArgs) (utils.CentralIPM, error, string) {
 	n := &CentralNet{}
 	if err := json.Unmarshal(args.StdinData, n); err != nil {
-		return nil, "", fmt.Errorf("failed to load netconf: %v", err)
+		return nil, fmt.Errorf("failed to load netconf: %v", err), ""
 	}
 
 	switch n.IPM.IPType {
 	case "node":
-		return node.New(skel.ContainerID, n), n.CNIVersion
+		node, err := node.New(args.ContainerID, n.IPM)
+		return node, err, n.CNIVersion
 	case "cluster":
 		return nil, nil, ""
 	default:
-		return nil, fmr.Errorf("Unsupport IPM type %s", n.IPM.Type), nil
+		return nil, fmt.Errorf("Unsupport IPM type %s", n.IPM.Type), ""
 	}
 }

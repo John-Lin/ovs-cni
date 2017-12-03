@@ -21,7 +21,7 @@ import (
 	"net"
 )
 
-func powTwo(times int) uint32 {
+func PowTwo(times int) uint32 {
 	if times == 0 {
 		return uint32(1)
 	}
@@ -35,21 +35,21 @@ func powTwo(times int) uint32 {
 	return ans
 }
 
-func ipToInt(ip net.IP) (uint32, error) {
+func IpToInt(ip net.IP) (uint32, error) {
 	if v4 := ip.To4(); v4 != nil {
 		return binary.BigEndian.Uint32(ip[12:16]), nil
 	}
-	return 0, fmt.Errorf("IP should be ipv4\n")
+	return 0, fmt.Errorf("IP should be ipv4 %v\n", ip)
 }
 
-func intToIP(nn uint32) net.IP {
+func IntToIP(nn uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.BigEndian.PutUint32(ip, nn)
 	return ip
 }
 
 //We use the first IP as gateway address
-func getNextIP(ipn *net.IPNet) net.IP {
+func GetNextIP(ipn *net.IPNet) net.IP {
 	nid := ipn.IP.Mask(ipn.Mask)
 	return ip.NextIP(nid)
 }

@@ -6,7 +6,7 @@ import (
 
 type IPMConfig struct {
 	Type      string `json:"type"`
-	IPType    string `json:"iptype"`
+	IPType    string `json:"ipType"`
 	Network   string `json:"network"`
 	SubnetLen int    `json:"subnetLen"`
 	SubnetMin string `json:"subnetMin"`
@@ -20,4 +20,4 @@ type CentralIPM interface {
 	Delete() error
 }
 
-const etcdPrefix string = "/ovs-cni/networks/"
+const ETCDPrefix string = "/ovs-cni/networks/"

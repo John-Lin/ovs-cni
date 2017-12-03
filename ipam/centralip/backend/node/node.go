@@ -16,12 +16,12 @@ package node
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/coreos/etcd/clientv3"
 	"net"
+	"os"
 	"time"
 )
 
@@ -30,13 +30,15 @@ type NodeIPM struct {
 	hostname string
 	podname  string
 	subnet   *net.IPNet
-	IPMConfig
+	config   *utils.IPMConfig
 }
 
-const subnetPrefix string = etcdPrefix + "subnets/"
+const nodePrefix string = utils.ETCDPrefix + "node/"
+const subnetPrefix string = nodePrefix + "subnets/"
 
-func New(podName string, config IPMConfig) (*NodeIPM, error) {
+func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 	node := &NodeIPM{}
+	node.config = config
 	var err error
 
 	node.hostname, err = os.Hostname()
@@ -97,7 +99,7 @@ func (node *NodeIPM) getKeyValuesWithPrefix(key string) (map[string]string, erro
 
 func (node *NodeIPM) checkNodeIsRegisted() error {
 
-	keyValues, err := node.getKeyValuesWithPrefix(etcdPrefix + node.hostname)
+	keyValues, err := node.getKeyValuesWithPrefix(nodePrefix + node.hostname)
 	if err != nil {
 		return err
 	}
@@ -106,26 +108,27 @@ func (node *NodeIPM) checkNodeIsRegisted() error {
 		return nil
 	}
 
-	_, node.subnet, err = net.ParseCIDR(keyValues[etcdPrefix+node.hostname])
+	_, node.subnet, err = net.ParseCIDR(keyValues[nodePrefix+node.hostname])
 	return err
 }
 
 func (node *NodeIPM) registerSubnet() error {
 	//Convert the subnet to int. for example.
 	//string(10.16.7.0) -> net.IP(10.16.7.0) -> int(168822528)
-	ipnet := net.ParseIP(node.SubnetMin)
-	ipStart, err := ipToInt(ipnet)
+	ipnet := net.ParseIP(node.config.SubnetMin)
+	ipStart, err := utils.IpToInt(ipnet)
 	if err != nil {
+		fmt.Println(node)
 		return err
 	}
 
 	//Since the subnet len is 24, we need to add 2^(32-24) for each subnet.
 	//(168822528 + 2^8) == 10.16.8.0
 	//(168822528 + 2* 2 ^8 ) == 10.16.9.0
-	ipNextSubnet := powTwo(32 - node.SubnetLen)
-	ipEnd := net.ParseIP(node.SubnetMax)
+	ipNextSubnet := utils.PowTwo(32 - node.config.SubnetLen)
+	ipEnd := net.ParseIP(node.config.SubnetMax)
 
-	nextSubnet := intToIP(ipStart)
+	nextSubnet := utils.IntToIP(ipStart)
 
 	nodeToSubnets, err := node.getKeyValuesWithPrefix(subnetPrefix)
 
@@ -134,7 +137,7 @@ func (node *NodeIPM) registerSubnet() error {
 	}
 
 	for i := 1; ; i++ {
-		cidr := fmt.Sprintf("%s%s/%d", subnetPrefix, nextSubnet.String(), node.SubnetLen)
+		cidr := fmt.Sprintf("%s%s/%d", subnetPrefix, nextSubnet.String(), node.config.SubnetLen)
 
 		if _, ok := nodeToSubnets[cidr]; !ok {
 			break
@@ -142,19 +145,19 @@ func (node *NodeIPM) registerSubnet() error {
 		if ipEnd.String() == nextSubnet.String() {
 			return fmt.Errorf("No available subnet for registering")
 		}
-		nextSubnet = intToIP(ipStart + ipNextSubnet*uint32(i))
+		nextSubnet = utils.IntToIP(ipStart + ipNextSubnet*uint32(i))
 	}
 
-	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(node.SubnetLen, 32)}
+	subnet := &net.IPNet{IP: nextSubnet, Mask: net.CIDRMask(node.config.SubnetLen, 32)}
 	node.subnet = subnet
 
-	//store the $etcdPrefix/hostname -> subnet
-	err = node.putValue(etcdPrefix+node.hostname, subnet.String())
+	//store the $nodePrefix/hostname -> subnet
+	err = node.putValue(nodePrefix+node.hostname, subnet.String())
 	if err != nil {
 		return err
 	}
 
-	//store the $etcdPrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
+	//store the $nodePrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
 	err = node.putValue(subnetPrefix+subnet.String(), node.hostname)
 	return err
 }
@@ -179,7 +182,7 @@ func (node *NodeIPM) Init(hostname, podname string) error {
 	node.hostname = hostname
 	node.podname = podname
 
-	err := node.connect(node.ETCDURL)
+	err := node.connect(node.config.ETCDURL)
 	if err != nil {
 		return err
 	}
@@ -196,7 +199,7 @@ func (node *NodeIPM) GetGateway() (string, error) {
 		return "", fmt.Errorf("You should init IPM first")
 	}
 
-	gwPrefix := etcdPrefix + node.hostname + "/gateway"
+	gwPrefix := nodePrefix + node.hostname + "/gateway"
 	nodeValues, err := node.getKeyValuesWithPrefix(gwPrefix)
 	if err != nil {
 		return "", err
@@ -204,7 +207,7 @@ func (node *NodeIPM) GetGateway() (string, error) {
 
 	var gwIP string
 	if len(nodeValues) == 0 {
-		gwIP = getNextIP(node.subnet).String()
+		gwIP = utils.GetNextIP(node.subnet).String()
 		node.putValue(gwPrefix, gwIP)
 	} else {
 		gwIP = nodeValues[gwPrefix]
@@ -218,15 +221,15 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 		return "", ipnet, fmt.Errorf("You should init IPM first")
 	}
 
-	usedIPPrefix := etcdPrefix + node.hostname + "/used/"
+	usedIPPrefix := nodePrefix + node.hostname + "/used/"
 	ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
 	if err != nil {
 		return "", ipnet, err
 	}
 
-	ipRange := powTwo(32 - (node.SubnetLen))
+	ipRange := utils.PowTwo(32 - (node.config.SubnetLen))
 	//Since the first IP is gateway, we should skip it
-	tmpIP := ip.NextIP(getNextIP(node.subnet))
+	tmpIP := ip.NextIP(utils.GetNextIP(node.subnet))
 
 	var availableIP string
 	for i := 1; i < int(ipRange); i++ {
@@ -241,7 +244,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 
 	//We need to generate a net.IPnet object which contains the IP and Mask.
 	//We use ParseCIDR to create the net.IPnet object and assign IP back to it.
-	cidr := fmt.Sprintf("%s/%d", availableIP, node.SubnetLen)
+	cidr := fmt.Sprintf("%s/%d", availableIP, node.config.SubnetLen)
 	var ip net.IP
 	ip, ipnet, err = net.ParseCIDR(cidr)
 	if err != nil {
@@ -254,7 +257,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 
 func (node *NodeIPM) Delete() error {
 	//get all used ip address and try to matches it id.
-	usedIPPrefix := etcdPrefix + node.hostname + "/used/"
+	usedIPPrefix := nodePrefix + node.hostname + "/used/"
 	ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
 	if err != nil {
 		return err
