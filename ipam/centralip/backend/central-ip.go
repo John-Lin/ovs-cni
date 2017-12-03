@@ -17,6 +17,7 @@ package centralip
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	// "github.com/John-Lin/ovs-cni/ipam/centralip/backend/cluster"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/node"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
@@ -37,7 +38,9 @@ func GenerateCentralIPM(args *skel.CmdArgs) (utils.CentralIPM, error, string) {
 
 	switch n.IPM.IPType {
 	case "node":
-		node, err := node.New(args.ContainerID, n.IPM)
+		hostname, _ := os.Hostname()
+		node, err := node.New(args.ContainerID, hostname, n.IPM)
+
 		return node, err, n.CNIVersion
 	case "cluster":
 		return nil, nil, ""

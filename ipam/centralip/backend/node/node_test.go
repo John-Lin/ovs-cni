@@ -15,146 +15,101 @@
 package node
 
 import (
-//	"github.com/stretchr/testify/assert"
-//	"testing"
+	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
+	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
-/*
-const validData string = `
-	{
-		"name":"mynet",
-		"cniVersion":"0.3.1",
-		"ipam":{
-			"type":"central",
-			"network":"10.245.0.0/16",
-			"subnetLen": 24,
-			"subnetMin": "10.245.5.0",
-			"subnetMax": "10.245.6.0",
-			"etcdURL": "127.0.0.1:2379"
-		}
-	}
-	`
+var node *NodeIPM
+var err error
 
-func TestGenerateCentralIPM(t *testing.T) {
-	var err error
-	var version string
-	n, version, err = GenerateCentralIPM([]byte(validData))
-	assert.NoError(t, err)
-	assert.Equal(t, n.ETCDURL, "127.0.0.1:2379")
-	assert.Equal(t, version, "0.3.1")
+var validData = utils.IPMConfig{
+	Network:   "10.123.0.0/16",
+	SubnetLen: 24,
+	SubnetMin: "10.123.5.0",
+	SubnetMax: "10.123.6.0",
+	ETCDURL:   "127.0.0.1:2379",
+}
 
-	err = n.Init("test0", "pod1")
+func TestNewNode(t *testing.T) {
+	node, err = New("pod1", "host1", &validData)
 	assert.NoError(t, err)
-	err = n.Init("test0", "pod1")
-	assert.NoError(t, err)
+	assert.NotNil(t, node)
+	assert.Equal(t, node.config.ETCDURL, "127.0.0.1:2379")
 }
 
 func TestGetGateway(t *testing.T) {
-	gwIP, err := n.GetGateway()
+	gwIP, err := node.GetGateway()
 	assert.NoError(t, err)
-	assert.Equal(t, "10.245.5.1", gwIP)
-	gwIP, err = n.GetGateway()
+	assert.Equal(t, "10.123.5.1", gwIP)
+	gwIP, err = node.GetGateway()
 	assert.NoError(t, err)
-	assert.Equal(t, "10.245.5.1", gwIP)
+	assert.Equal(t, "10.123.5.1", gwIP)
 }
 
 func TestGetAvailableIP(t *testing.T) {
 	t.Run("First IP", func(t *testing.T) {
-		ip, ipNet, err := n.GetAvailableIP()
+		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.245.5.2/24", ipNet.String())
-		assert.Equal(t, "10.245.5.2", ip)
+		assert.Equal(t, "10.123.5.2/24", ipNet.String())
+		assert.Equal(t, "10.123.5.2", ip)
 	})
+	time.Sleep(1 * time.Second)
 	t.Run("Second IP", func(t *testing.T) {
-		ip, ipNet, err := n.GetAvailableIP()
+		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.245.5.3/24", ipNet.String())
-		assert.Equal(t, "10.245.5.3", ip)
+		assert.Equal(t, "10.123.5.3/24", ipNet.String())
+		assert.Equal(t, "10.123.5.3", ip)
 	})
+	time.Sleep(1 * time.Second)
 	t.Run("remove first IP", func(t *testing.T) {
-		err := n.DeleteIPByName("pod1")
+		err := node.Delete()
 		assert.NoError(t, err)
 	})
+	time.Sleep(1 * time.Second)
 	t.Run("Fetch IP again", func(t *testing.T) {
-		ip, ipNet, err := n.GetAvailableIP()
+		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.245.5.2/24", ipNet.String())
-		assert.Equal(t, "10.245.5.2", ip)
+		assert.Equal(t, "10.123.5.2/24", ipNet.String())
+		assert.Equal(t, "10.123.5.2", ip)
 	})
 }
 
-func TestSecondSubnet(t *testing.T) {
-	ipm, _, err := GenerateCentralIPM([]byte(validData))
+func TestSecondHost(t *testing.T) {
+	node2, err := New("pod1", "host2", &validData)
 	assert.NoError(t, err)
 
-	err = ipm.Init("test1", "pod2")
+	gwIP, err := node2.GetGateway()
 	assert.NoError(t, err)
+	assert.Equal(t, "10.123.6.1", gwIP)
+	ip, ipNet, err := node2.GetAvailableIP()
+	assert.NoError(t, err)
+	assert.Equal(t, "10.123.6.2/24", ipNet.String())
+	assert.Equal(t, "10.123.6.2", ip)
 
-	gwIP, err := ipm.GetGateway()
-	assert.NoError(t, err)
-	assert.Equal(t, "10.245.6.1", gwIP)
 }
 
 func TestGenerateCentralIPMInvalid(t *testing.T) {
-	t.Run("invalid config", func(t *testing.T) {
-		const inValidData string = `
-		{
-			asdd
-		}
-		`
-		var err error
-		n, _, err = GenerateCentralIPM([]byte(inValidData))
-		assert.Error(t, err)
-	})
+	var InvalidData = utils.IPMConfig{
+		Network:   "10.123.0.0/16",
+		SubnetLen: 24,
+		SubnetMin: "10.123.5.0",
+		SubnetMax: "10.123.6.0",
+		ETCDURL:   "127.0.0.1:23792",
+	}
+
 	t.Run("invalid etcd", func(t *testing.T) {
-		const inValidData string = `
-		{
-			"ipam":{
-				"type":"central",
-				"network":"10.245.0.0/16",
-				"subnetLen": 24,
-				"subnetMin": "10.245.5.0",
-				"subnetMax": "10.245.6.0",
-				"etcdURL": "127.0.0.1:23791"
-			}
-		}
-		`
 		var err error
-		n, _, err = GenerateCentralIPM([]byte(inValidData))
-		assert.NoError(t, err)
-		err = n.Init("test_invalid", "pod0")
+		node, err = New("pod1", "host1", &InvalidData)
 		assert.Error(t, err)
-	})
-	t.Run("invalid call(init first)", func(t *testing.T) {
-		const inValidData string = `
-
-		{
-			"ipam":{
-				"type":"central",
-				"network":"10.245.0.0/16",
-				"subnetLen": 24,
-				"subnetMin": "10.245.5.0",
-				"subnetMax": "10.245.50.0",
-				"etcdURL": "127.0.0.1:2379"
-			}
-		}
-		`
-		var err error
-		n, _, err = GenerateCentralIPM([]byte(inValidData))
-		assert.NoError(t, err)
-		_, err = n.GetGateway()
-		assert.Error(t, err)
-		_, _, err = n.GetAvailableIP()
-		assert.Error(t, err)
-
+		assert.Nil(t, node)
 	})
 	t.Run("no available subnet", func(t *testing.T) {
 		var err error
-		ipm, _, err := GenerateCentralIPM([]byte(validData))
-		assert.NoError(t, err)
-
-		err = ipm.Init("test3", "pod2")
+		node, err = New("pod1", "host3", &validData)
 		assert.Error(t, err)
+		assert.Nil(t, node)
 	})
+
 }
-*/

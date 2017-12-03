@@ -21,7 +21,6 @@ import (
 	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/coreos/etcd/clientv3"
 	"net"
-	"os"
 	"time"
 )
 
@@ -36,16 +35,12 @@ type NodeIPM struct {
 const nodePrefix string = utils.ETCDPrefix + "node/"
 const subnetPrefix string = nodePrefix + "subnets/"
 
-func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
+func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 	node := &NodeIPM{}
 	node.config = config
 	var err error
 
-	node.hostname, err = os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
+	node.hostname = hostname
 	node.podname = podName
 	err = node.connect(config.ETCDURL)
 	if err != nil {

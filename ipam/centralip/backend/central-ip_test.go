@@ -38,9 +38,32 @@ var validNodeData = skel.CmdArgs{
 	`),
 }
 
+var InvalidNodeData = skel.CmdArgs{
+	StdinData: []byte(`
+	{
+		"name":"mynet",
+		"cniVersion":"0.3.1",
+		"ipam":{
+			"type":"central",
+			"network":"10.245.0.0/16",
+			"subnetLen": 24,
+			"subnetMin": "10.245.5.0",
+			"subnetMax": "10.245.6.0",
+			"etcdURL": "127.0.0.1:2379"
+		}
+	}
+	`),
+}
+
 func TestGenerateCentralIPM(t *testing.T) {
 	n, err, version := GenerateCentralIPM(&validNodeData)
 	assert.NoError(t, err)
 	assert.NotNil(t, n)
 	assert.Equal(t, version, "0.3.1")
+}
+
+func TestGenerateInvalidCentralIPM(t *testing.T) {
+	n, err, _ := GenerateCentralIPM(&InvalidNodeData)
+	assert.Error(t, err)
+	assert.Nil(t, n)
 }
