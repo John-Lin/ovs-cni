@@ -15,11 +15,9 @@
 package node
 
 import (
-	"github.com/stretchr/testify/assert"
-	"testing"
+//	"github.com/stretchr/testify/assert"
+//	"testing"
 )
-
-var n *CentralIPM
 
 /*
 const validData string = `

@@ -2,7 +2,6 @@ package main
 
 import (
 	"net"
-	"os"
 	//	"strings"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend"
 	"github.com/containernetworking/cni/pkg/skel"
@@ -58,7 +57,7 @@ func cmdAdd(args *skel.CmdArgs) error {
 }
 
 func cmdDel(args *skel.CmdArgs) error {
-	n, _, err := centralip.GenerateCentralIPM(args)
+	n, err, _ := centralip.GenerateCentralIPM(args)
 	if err != nil {
 		return err
 	}
