@@ -2,8 +2,8 @@
 # vi: set ft=ruby :
 
 cluster = {
-  "host1" => { :cpus => 1, :mem => 1024 },
-  "host2" => { :cpus => 1, :mem => 1024 },
+    "host1" => { :cpus => 1, :mem => 1024, :ip => "192.168.2.3" },
+    "host2" => { :cpus => 1, :mem => 1024, :ip => "192.168.2.4" },
 }
 
 Vagrant.configure("2") do |config|
@@ -55,7 +55,7 @@ Vagrant.configure("2") do |config|
       config.vm.define hostname do |cfg|
           cfg.vm.box = "ubuntu/xenial64"
           cfg.vm.hostname = hostname
-          cfg.vm.network "public_network", bridge: "en0: Wi-Fi (AirPort)"
+          cfg.vm.network "private_network", ip: info[:ip]
           cfg.vm.provider :virtualbox do |v|
               v.customize ["modifyvm", :id, "--cpus", info[:cpus]]
               v.customize ["modifyvm", :id, "--memory", info[:mem]]
