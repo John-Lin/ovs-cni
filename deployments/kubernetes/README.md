@@ -173,71 +173,49 @@ $ sudo systemctl restart kubelet
 
 ### Configuring ovs-cni network plugin
 
-Modify the configuration to meet your requirements. Check the `example.conf` and copy into the default `--cni-conf-dir` path which is in `/etc/cni/net.d`.
+Modify the configuration to meet your requirements. Check the configuration files in the `example` and copy one into the default `--cni-conf-dir` path which is in `/etc/cni/net.d` and rename it as `ovs.conf`
 
-For the host1, given the following network configuration:
+For example, if you want to use the simplest configuration, you can type following command to copy the configuration file
 
+#### Host-Local
 ```
 $ cd ~/go/src/github.com/John-Lin/ovs-cni
-# tee /etc/cni/net.d/ovs.conf <<-'EOF'
-{
-   "name":"mynet",
-   "cniVersion":"0.3.1",
-   "type":"ovs",
-   "ovsBridge":"br0",
-   "vtepIPs":[
-      "192.168.0.108"
-   ],
-   "isDefaultGateway": true,
-   "ipMasq": true,
-   "ipam":{
-      "type":"host-local",
-      "subnet":"10.244.0.0/16",
-      "rangeStart":"10.244.1.10",
-      "rangeEnd":"10.244.1.150",
-      "routes":[
-         {
-            "dst":"0.0.0.0/0"
-         }
-      ],
-      "gateway":"10.244.1.1"
-   }
-}
-EOF
+$ cp example/example.conf /etc/cni/net.d/ovs.conf
 ```
-
-For the host2, given the following network configuration:
-
-```
-$ cd ~/go/src/github.com/John-Lin/ovs-cni
-# tee /etc/cni/net.d/ovs.conf <<-'EOF'
-{
-   "name":"mynet",
-   "cniVersion":"0.3.1",
-   "type":"ovs",
-   "ovsBridge":"br0",
-   "vtepIPs":[
-      "192.168.0.107"
-   ],
-   "isDefaultGateway": true,
-   "ipMasq": true,
-   "ipam":{
-      "type":"host-local",
-      "subnet":"10.244.0.0/16",
-      "rangeStart":"10.244.2.10",
-      "rangeEnd":"10.244.2.150",
-      "routes":[
-         {
-            "dst":"0.0.0.0/0"
-         }
-      ],
-      "gateway":"10.244.2.1"
-   }
-}
-EOF
-```
-
 **Note**: the `vtepIPs`, `rangeStart`, `rangeEnd` and `gateway` could be different on each host.
+
+#### CentralIP
+If you want to use the centralizaed IP management, you can use the following command
+```
+$ cd ~/go/src/github.com/John-Lin/ovs-cni
+$ cp example/example-centalip-node.conf /etc/cni/net.d/ovs.conf
+```
+After that, you should modify the `etcdURL` option to your k8s master IP address.
+Besides, you should also modify the etcd manifests to allow etcd server running on public (from 127.0.0.1 to 0.0.0.0) in kuberneter master node (This could cause security issue)
+
+```shell
+sudo vim /etc/kubernetes/manifests/etcd.yaml
+```
+
+```yaml
+...
+spec:
+  containers:
+  - command:
+    - etcd
+    - --listen-client-urls=http://0.0.0.0:2379
+    - --advertise-client-urls=http://0.0.0.0:2379
+    - --data-dir=/var/lib/etcd
+...
+...
+```
+
+Restart kubelet on master node
+
+```
+$ sudo systemctl daemon-reload
+$ sudo systemctl restart kubelet
+```
 
 ### Master Isolation
 

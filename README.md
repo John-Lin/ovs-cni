@@ -45,7 +45,7 @@ ipMasq: true
 6. IPAM support
 
 ovs-cni support basic IPAM type such as host-local, you can see `example/example.conf` to see how config it.
-Besides, ovs-cni provide a new IPAM plugin central-ip, which use the etcd to perform centralized IP assignment/management and you can go to `ipam/centralip` directory to see more usage about it.
+Besides, ovs-cni provide a new IPAM plugin central-ip, which use the `ETCD` to perform centralized IP assignment/management and you can go to `ipam/centralip` directory to see more usage about it.
 
 ## Usage
 
@@ -72,7 +72,9 @@ build the ovs-cni binary.
 ```
 $ ./build.sh
 ```
-and the binary will come out in the `/bin` directory.
+and the binary will come out in the `/bin` directory and you can find `ovs` and `centralip`.
+The `ovs` is the main CNI plugin and the `centralip` is the CNI plugin for different IPAM usage.
+If you want to use `ETCD` to centralizaed manage the IP address, you should also copy the `centralip` binary to the CNI directory and modify the config to use it.
 
 ```
 $ sudo ip netns add ns1

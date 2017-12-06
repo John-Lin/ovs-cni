@@ -1,14 +1,15 @@
 ## Introduction
 The centralip IPAM plugin use the etcd-v3 to handle all ip management.
-In the current implementation, the centralip dispatch the subnet to different host (use hostname as its key).
-If you deploy this on a kubernetes environment, it's a subnet per node implementation.
-
+We provide two mode to decide how to dispatch the ip address.
+`Node` mode  and `clster` mode.
+In the cluster mode, we even don't provide the gateway address for each node and we hope the SDN controller should handle this, such as ONOS.
 
 ## config
 The config of centralip like below.
 ```
    "ipam":{
        "type":"centralip",
+       "ipType": "node",
        "network":"10.245.0.0/16",
        "subnetLen": 24,
        "subnetMin": "10.245.5.0",
@@ -16,6 +17,15 @@ The config of centralip like below.
        "etcdURL": "127.0.0.1:2379"
    }
 ```
+### ipType
+We have two backends now, `node` and `cluster`.
+
+In the `node` mode, You need to specify all the following options and it will assign different ip subnet to each node.
+
+In the ohter hand, the `cluster` mode, you only set the `network` and `etcdURL` options.
+The `cluster` will assign the IP address to all nodes in the same subnet.
+In this mode, we won't provide the gateway address for you, so don't set the `IsDefaultGatway` option in your CNI configuration.
+You can see two example configs in the `../../examples`
 
 ### network
 This field indicate the whole network subnet you want to use.
