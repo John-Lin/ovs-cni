@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package centralip
+package utils
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -21,25 +21,25 @@ import (
 )
 
 func TestPowOfTwo(t *testing.T) {
-	assert.Equal(t, uint32(2), powTwo(1))
-	assert.Equal(t, uint32(1), powTwo(0))
-	assert.Equal(t, uint32(1024), powTwo(10))
-	assert.Equal(t, uint32(2147483648), powTwo(31))
+	assert.Equal(t, uint32(2), PowTwo(1))
+	assert.Equal(t, uint32(1), PowTwo(0))
+	assert.Equal(t, uint32(1024), PowTwo(10))
+	assert.Equal(t, uint32(2147483648), PowTwo(31))
 }
 
 func TestIp2Int(t *testing.T) {
 	v4Input := net.ParseIP("127.0.0.1")
-	result, err := ipToInt(v4Input)
+	result, err := IpToInt(v4Input)
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(2130706433), result)
 
 	v6Input := net.ParseIP("2001:0DB8:02de:0000:0000:0000:0000:0e13")
-	result, err = ipToInt(v6Input)
+	result, err = IpToInt(v6Input)
 	assert.Error(t, err)
 }
 
 func TestInt2IP(t *testing.T) {
-	input := intToIP(2130706433)
+	input := IntToIP(2130706433)
 	assert.Equal(t, "127.0.0.1", input.String())
 
 }
@@ -47,6 +47,6 @@ func TestInt2IP(t *testing.T) {
 func TestGetGatewayFromIP(t *testing.T) {
 	_, input, _ := net.ParseCIDR("192.168.194.0/22")
 
-	gwIP := getNextIP(input)
+	gwIP := GetNextIP(input)
 	assert.Equal(t, gwIP.String(), "192.168.192.1")
 }
