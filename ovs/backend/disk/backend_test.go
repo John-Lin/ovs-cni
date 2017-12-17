@@ -13,7 +13,7 @@ const (
 )
 
 func TestNewStore(t *testing.T) {
-	store, err := New("default", "./test")
+	store, err := New("", "./test")
 	assert.NotNil(t, store)
 	assert.NoError(t, err)
 }
