@@ -1,0 +1,22 @@
+apiVersion: "kubernetes.com/v1"
+kind: Network
+metadata:
+  name: ovs-net
+plugin: ovs
+args: '[
+        {
+        "name": "myovsnet",
+        "type": "ovs",
+        "ovsBridge":"br0",
+        "isDefaultGateway": true,
+        "ipMasq": true,
+        "ipam":{
+            "type":"centralip",
+            "network":"10.245.0.0/16",
+            "subnetLen": 24,
+            "subnetMin": "10.245.5.0",
+            "subnetMax": "10.245.50.0",
+            "etcdURL": "127.0.0.1:2379"
+        }
+        }
+]'
