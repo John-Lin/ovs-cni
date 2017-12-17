@@ -1,7 +1,8 @@
 FROM alpine:latest
 
-ADD bin/ovs /cni/bin/ovs
-ADD bin/centralip /cni/bin/centralip
-COPY Docker/entrypoint.sh /
-COPY example/ /cni/conf/
+ADD bin/ /tmp/bin
+ADD example/ /tmp/conf
+ADD example/multus /tmp/conf
+ADD Docker/entrypoint.sh /
+
 ENTRYPOINT ["/entrypoint.sh"]
