@@ -37,7 +37,11 @@ func PowTwo(times int) uint32 {
 
 func IpToInt(ip net.IP) (uint32, error) {
 	if v4 := ip.To4(); v4 != nil {
-		return binary.BigEndian.Uint32(ip[12:16]), nil
+		if len(ip) == 16 {
+			return binary.BigEndian.Uint32(ip[12:16]), nil
+		} else {
+			return binary.BigEndian.Uint32(ip[0:4]), nil
+		}
 	}
 	return 0, fmt.Errorf("IP should be ipv4 %v\n", ip)
 }
@@ -52,4 +56,9 @@ func IntToIP(nn uint32) net.IP {
 func GetNextIP(ipn *net.IPNet) net.IP {
 	nid := ipn.IP.Mask(ipn.Mask)
 	return ip.NextIP(nid)
+}
+
+func GetIPByInt(ip net.IP, n uint32) net.IP {
+	i, _ := IpToInt(ip)
+	return IntToIP(i + n)
 }
