@@ -50,3 +50,13 @@ func TestGetGatewayFromIP(t *testing.T) {
 	gwIP := GetNextIP(input)
 	assert.Equal(t, gwIP.String(), "192.168.192.1")
 }
+
+func TestGetIpByInt(t *testing.T) {
+	net, _, _ := net.ParseCIDR("192.168.194.0/22")
+
+	assert.Equal(t, GetIPByInt(net, uint32(20)).String(), "192.168.194.20")
+	assert.Equal(t, GetIPByInt(net, uint32(0)).String(), "192.168.194.0")
+	assert.Equal(t, GetIPByInt(net, uint32(50)).String(), "192.168.194.50")
+	assert.Equal(t, GetIPByInt(net, uint32(200)).String(), "192.168.194.200")
+	assert.Equal(t, GetIPByInt(net, uint32(300)).String(), "192.168.195.44")
+}

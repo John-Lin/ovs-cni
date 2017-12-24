@@ -18,8 +18,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
-	"github.com/containernetworking/plugins/pkg/ip"
 	"github.com/coreos/etcd/clientv3"
+	"math/rand"
 	"net"
 	"time"
 )
@@ -100,30 +100,39 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 	}
 
 	usedIPPrefix := clusterPrefix + "used/"
-	ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
-	if err != nil {
-		return "", ipnet, err
-	}
 
-	len, _ := node.subnet.Mask.Size()
-	ipRange := utils.PowTwo(32 - (len))
+	length, _ := node.subnet.Mask.Size()
+	ipRange := utils.PowTwo(32 - (length))
 	//Since the first IP is gateway, we should skip it
-	tmpIP := ip.NextIP(utils.GetNextIP(node.subnet))
 
+	//change to random a ip (must not be gateway) and try to check the etcd:
+	start := utils.GetNextIP(node.subnet)
+
+	//If ip Range = 256, our target it 2~255
+	//rand.Intn( range - 2 ) will return 0<=n<254,
+	//+2 will cause 2<=n<256
+	retryTimes := 20
 	var availableIP string
-	for i := 1; i < int(ipRange); i++ {
+	for i := 0; i < retryTimes; i++ {
+		tryIP := utils.GetIPByInt(start, uint32(rand.Intn(int(ipRange-2))+1))
+
+		ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
+		if err != nil {
+			return "", ipnet, err
+		}
+
 		//check.
-		if _, ok := ipUsedToPod[usedIPPrefix+tmpIP.String()]; !ok {
-			availableIP = tmpIP.String()
-			node.putValue(usedIPPrefix+tmpIP.String(), node.podname)
+		if _, ok := ipUsedToPod[usedIPPrefix+tryIP.String()]; !ok {
+			availableIP = tryIP.String()
+			node.putValue(usedIPPrefix+tryIP.String(), node.podname)
 			break
 		}
-		tmpIP = ip.NextIP(tmpIP)
 	}
 
+	var err error
 	//We need to generate a net.IPnet object which contains the IP and Mask.
 	//We use ParseCIDR to create the net.IPnet object and assign IP back to it.
-	cidr := fmt.Sprintf("%s/%d", availableIP, len)
+	cidr := fmt.Sprintf("%s/%d", availableIP, length)
 	var ip net.IP
 	ip, ipnet, err = net.ParseCIDR(cidr)
 	if err != nil {

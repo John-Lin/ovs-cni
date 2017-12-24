@@ -65,15 +65,15 @@ func TestGetAvailableIP(t *testing.T) {
 	t.Run("First IP", func(t *testing.T) {
 		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.123.5.2/24", ipNet.String())
-		assert.Equal(t, "10.123.5.2", ip)
+		assert.NotEqual(t, "10.123.5.1/24", ipNet.String())
+		assert.NotEqual(t, "10.123.5.1", ip)
 	})
 	time.Sleep(1 * time.Second)
 	t.Run("Second IP", func(t *testing.T) {
 		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.123.5.3/24", ipNet.String())
-		assert.Equal(t, "10.123.5.3", ip)
+		assert.NotEqual(t, "10.123.5.1/24", ipNet.String())
+		assert.NotEqual(t, "10.123.5.1", ip)
 	})
 	time.Sleep(1 * time.Second)
 	t.Run("remove first IP", func(t *testing.T) {
@@ -84,8 +84,8 @@ func TestGetAvailableIP(t *testing.T) {
 	t.Run("Fetch IP again", func(t *testing.T) {
 		ip, ipNet, err := node.GetAvailableIP()
 		assert.NoError(t, err)
-		assert.Equal(t, "10.123.5.2/24", ipNet.String())
-		assert.Equal(t, "10.123.5.2", ip)
+		assert.NotEqual(t, "10.123.5.1/24", ipNet.String())
+		assert.NotEqual(t, "10.123.5.1", ip)
 	})
 }
 
@@ -102,8 +102,8 @@ func TestSecondHost(t *testing.T) {
 	assert.Equal(t, "10.123.6.1", gwIP)
 	ip, ipNet, err := node2.GetAvailableIP()
 	assert.NoError(t, err)
-	assert.Equal(t, "10.123.6.2/24", ipNet.String())
-	assert.Equal(t, "10.123.6.2", ip)
+	assert.NotEqual(t, "10.123.6.1/24", ipNet.String())
+	assert.NotEqual(t, "10.123.6.1", ip)
 
 }
 
