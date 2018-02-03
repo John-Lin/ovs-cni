@@ -15,6 +15,9 @@
 package utils
 
 import (
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
+	"time"
 	"encoding/binary"
 	"fmt"
 	"github.com/containernetworking/plugins/pkg/ip"
@@ -61,4 +64,37 @@ func GetNextIP(ipn *net.IPNet) net.IP {
 func GetIPByInt(ip net.IP, n uint32) net.IP {
 	i, _ := IpToInt(ip)
 	return IntToIP(i + n)
+}
+
+/*
+	ETCD Related
+*/
+func ConnectETCD(url string) (*clientv3.Client, error) {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: 5 * time.Second,
+	})
+
+	return cli, err
+}
+
+func ConnectETCDWithTLS(url, cert, key, trusted string) (*clientv3.Client, error) {
+	tlsInfo := transport.TLSInfo{
+		CertFile:      cert,
+		KeyFile:       key,
+		TrustedCAFile: trusted,
+	}
+
+	tlsConfig, err := tlsInfo.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: 5 * time.Second,
+		TLS:         tlsConfig,
+	})
+
+	return cli, err
 }

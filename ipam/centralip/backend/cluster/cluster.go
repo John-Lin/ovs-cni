@@ -19,10 +19,9 @@ import (
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/coreos/etcd/clientv3"
-	"github.com/coreos/etcd/pkg/transport"
 	"math/rand"
 	"net"
-	"string"
+	"strings"
 	"time"
 )
 
@@ -41,10 +40,10 @@ func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 	var err error
 
 	node.podname = podName
-	if strings.HasPrefix(config.ETCDUL, "https") {
-		err = node.connectWithTLS(config.ETCDURL, config.ETCDCertFile, ETCDKeyFile, ETCDTrustedCAFileFile)
+	if strings.HasPrefix(config.ETCDURL, "https") {
+		node.cli, err = utils.ConnectETCDWithTLS(config.ETCDURL, config.ETCDCertFile, config.ETCDKeyFile, config.ETCDTrustedCAFileFile)
 	} else {
-		err = node.connect(config.ETCDURL)
+		node.cli, err = utils.ConnectETCD(config.ETCDURL)
 	}
 	if err != nil {
 		return nil, err
@@ -55,41 +54,6 @@ func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 		return nil, err
 	}
 	return node, nil
-}
-
-/*
-	ETCD Related
-*/
-func (node *NodeIPM) connect(etcdUrl string) error {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdUrl},
-		DialTimeout: 5 * time.Second,
-	})
-
-	node.cli = cli
-	return err
-}
-
-func (node *NodeIPM) connectWithTLS(url, cert, key, trusted string) {
-	tlsInfo = transport.TLSInfo{
-		CertFile:      cert,
-		KeyFile:       key,
-		TrustedCAFile: trusted,
-	}
-
-	tlsConfig, err := tlsInfo.ClientConfig()
-	if err != nil {
-		return err
-	}
-
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdUrl},
-		DialTimeout: 5 * time.Second,
-		TLS:         tlsConfig,
-	})
-
-	node.cli = cli
-	return err
 }
 
 func (node *NodeIPM) deleteKey(prefix string) error {

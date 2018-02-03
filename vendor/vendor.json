@@ -139,6 +139,18 @@
 			"revisionTime": "2017-11-02T15:35:43Z"
 		},
 		{
+			"checksumSHA1": "rMyIh9PsSvPs6Yd+YgKITQzQJx8=",
+			"path": "github.com/coreos/etcd/pkg/tlsutil",
+			"revision": "6a265731e10a5137b991c1aa3a83ecefdd149d50",
+			"revisionTime": "2018-02-02T22:08:29Z"
+		},
+		{
+			"checksumSHA1": "PoTXn5yRFx7RyFeBgjoPoAbx2C0=",
+			"path": "github.com/coreos/etcd/pkg/transport",
+			"revision": "6a265731e10a5137b991c1aa3a83ecefdd149d50",
+			"revisionTime": "2018-02-02T22:08:29Z"
+		},
+		{
 			"checksumSHA1": "RM7wQmNoUSB93ogKxdpA4265++Y=",
 			"path": "github.com/coreos/go-iptables/iptables",
 			"revision": "17b936e6ccb6f6e424f7d89c614164e796df1661",
