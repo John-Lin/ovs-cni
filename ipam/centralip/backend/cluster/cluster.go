@@ -19,8 +19,10 @@ import (
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
 	"math/rand"
 	"net"
+	"string"
 	"time"
 )
 
@@ -39,7 +41,11 @@ func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 	var err error
 
 	node.podname = podName
-	err = node.connect(config.ETCDURL)
+	if strings.HasPrefix(config.ETCDUL, "https") {
+		err = node.connectWithTLS(config.ETCDURL, config.ETCDCertFile, ETCDKeyFile, ETCDTrustedCAFileFile)
+	} else {
+		err = node.connect(config.ETCDURL)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +64,28 @@ func (node *NodeIPM) connect(etcdUrl string) error {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{etcdUrl},
 		DialTimeout: 5 * time.Second,
+	})
+
+	node.cli = cli
+	return err
+}
+
+func (node *NodeIPM) connectWithTLS(url, cert, key, trusted string) {
+	tlsInfo = transport.TLSInfo{
+		CertFile:      cert,
+		KeyFile:       key,
+		TrustedCAFile: trusted,
+	}
+
+	tlsConfig, err := tlsInfo.ClientConfig()
+	if err != nil {
+		return err
+	}
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{etcdUrl},
+		DialTimeout: 5 * time.Second,
+		TLS:         tlsConfig,
 	})
 
 	node.cli = cli
