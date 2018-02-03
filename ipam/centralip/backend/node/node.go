@@ -42,7 +42,13 @@ func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 
 	node.hostname = hostname
 	node.podname = podName
-	err = node.connect(config.ETCDURL)
+
+	if strings.HasPrefix(config.ETCDURL, "https") {
+		node.cli, err = utils.ConnectETCDWithTLS(config.ETCDURL, config.ETCDCertFile, config.ETCDKeyFile, config.ETCDTrustedCAFileFile)
+	} else {
+		node.cli, err = utils.ConnectETCD(config.ETCDURL)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -52,19 +58,6 @@ func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 		return nil, err
 	}
 	return node, nil
-}
-
-/*
-	ETCD Related
-*/
-func (node *NodeIPM) connect(etcdUrl string) error {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdUrl},
-		DialTimeout: 5 * time.Second,
-	})
-
-	node.cli = cli
-	return err
 }
 
 func (node *NodeIPM) deleteKey(prefix string) error {
