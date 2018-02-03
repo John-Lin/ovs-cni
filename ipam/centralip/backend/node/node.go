@@ -20,7 +20,6 @@ import (
 	"github.com/coreos/etcd/clientv3"
 	"math/rand"
 	"net"
-	"strings"
 )
 
 type NodeIPM struct {
@@ -42,12 +41,7 @@ func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 	node.hostname = hostname
 	node.podname = podName
 
-	if strings.HasPrefix(config.ETCDURL, "https") {
-		node.cli, err = utils.ConnectETCDWithTLS(config.ETCDURL, config.ETCDCertFile, config.ETCDKeyFile, config.ETCDTrustedCAFileFile)
-	} else {
-		node.cli, err = utils.ConnectETCD(config.ETCDURL)
-	}
-
+	node.cli, err = utils.ConnectETCD(config)
 	if err != nil {
 		return nil, err
 	}

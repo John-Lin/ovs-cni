@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"net"
+	"strings"
 )
 
 func PowTwo(times int) uint32 {
@@ -70,7 +71,7 @@ func GetIPByInt(ip net.IP, n uint32) net.IP {
 /*
 	ETCD Related
 */
-func ConnectETCD(url string) (*clientv3.Client, error) {
+func connectWithoutTLS(url string) (*clientv3.Client, error) {
 	cli, err := clientv3.New(clientv3.Config{
 		Endpoints:   []string{url},
 		DialTimeout: 5 * time.Second,
@@ -79,7 +80,7 @@ func ConnectETCD(url string) (*clientv3.Client, error) {
 	return cli, err
 }
 
-func ConnectETCDWithTLS(url, cert, key, trusted string) (*clientv3.Client, error) {
+func connectWithTLS(url, cert, key, trusted string) (*clientv3.Client, error) {
 	tlsInfo := transport.TLSInfo{
 		CertFile:      cert,
 		KeyFile:       key,
@@ -99,6 +100,20 @@ func ConnectETCDWithTLS(url, cert, key, trusted string) (*clientv3.Client, error
 
 	return cli, err
 }
+
+
+func ConnectETCD(config *IPMConfig) (*clientv3.Client, error) {
+	var cli *clientv3.Client
+	var err error
+	if strings.HasPrefix(config.ETCDURL, "https") {
+		cli, err = connectWithTLS(config.ETCDURL, config.ETCDCertFile, config.ETCDKeyFile, config.ETCDTrustedCAFileFile)
+	} else {
+		cli, err = connectWithoutTLS(config.ETCDURL)
+	}
+
+	return cli,err
+}
+
 
 func DeleteKey(cli *clientv3.Client, prefix string) error {
 	_, err := cli.Delete(context.TODO(), prefix)
