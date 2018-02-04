@@ -15,13 +15,11 @@
 package node
 
 import (
-	"context"
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/coreos/etcd/clientv3"
 	"math/rand"
 	"net"
-	"time"
 )
 
 type NodeIPM struct {
@@ -42,7 +40,8 @@ func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 
 	node.hostname = hostname
 	node.podname = podName
-	err = node.connect(config.ETCDURL)
+
+	node.cli, err = utils.ConnectETCD(config)
 	if err != nil {
 		return nil, err
 	}
@@ -54,47 +53,9 @@ func New(podName, hostname string, config *utils.IPMConfig) (*NodeIPM, error) {
 	return node, nil
 }
 
-/*
-	ETCD Related
-*/
-func (node *NodeIPM) connect(etcdUrl string) error {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdUrl},
-		DialTimeout: 5 * time.Second,
-	})
-
-	node.cli = cli
-	return err
-}
-
-func (node *NodeIPM) deleteKey(prefix string) error {
-	_, err := node.cli.Delete(context.TODO(), prefix)
-	return err
-}
-func (node *NodeIPM) putValue(prefix, value string) error {
-	_, err := node.cli.Put(context.TODO(), prefix, value)
-	return err
-}
-
-func (node *NodeIPM) getKeyValuesWithPrefix(key string) (map[string]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := node.cli.Get(ctx, key, clientv3.WithPrefix())
-	cancel()
-	if err != nil {
-		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
-	}
-
-	results := make(map[string]string)
-	for _, ev := range resp.Kvs {
-		results[string(ev.Key)] = string(ev.Value)
-	}
-
-	return results, nil
-}
-
 func (node *NodeIPM) checkNodeIsRegisted() error {
 
-	keyValues, err := node.getKeyValuesWithPrefix(nodePrefix + node.hostname)
+	keyValues, err := utils.GetKeyValuesWithPrefix(node.cli,nodePrefix + node.hostname)
 	if err != nil {
 		return err
 	}
@@ -125,7 +86,7 @@ func (node *NodeIPM) registerSubnet() error {
 
 	nextSubnet := utils.IntToIP(ipStart)
 
-	nodeToSubnets, err := node.getKeyValuesWithPrefix(subnetPrefix)
+	nodeToSubnets, err :=utils.GetKeyValuesWithPrefix(node.cli,subnetPrefix)
 
 	if err != nil {
 		return err
@@ -147,13 +108,13 @@ func (node *NodeIPM) registerSubnet() error {
 	node.subnet = subnet
 
 	//store the $nodePrefix/hostname -> subnet
-	err = node.putValue(nodePrefix+node.hostname, subnet.String())
+	err = utils.PutValue(node.cli,nodePrefix+node.hostname, subnet.String())
 	if err != nil {
 		return err
 	}
 
 	//store the $nodePrefix/subnets/$subnet -> hostname  for fast lookup for existing subnet
-	err = node.putValue(subnetPrefix+subnet.String(), node.hostname)
+	err = utils.PutValue(node.cli,subnetPrefix+subnet.String(), node.hostname)
 	return err
 }
 
@@ -179,7 +140,7 @@ func (node *NodeIPM) GetGateway() (string, error) {
 	}
 
 	gwPrefix := nodePrefix + node.hostname + "/gateway"
-	nodeValues, err := node.getKeyValuesWithPrefix(gwPrefix)
+	nodeValues, err := utils.GetKeyValuesWithPrefix(node.cli,gwPrefix)
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +148,7 @@ func (node *NodeIPM) GetGateway() (string, error) {
 	var gwIP string
 	if len(nodeValues) == 0 {
 		gwIP = utils.GetNextIP(node.subnet).String()
-		node.putValue(gwPrefix, gwIP)
+		utils.PutValue(node.cli,gwPrefix, gwIP)
 	} else {
 		gwIP = nodeValues[gwPrefix]
 	}
@@ -214,7 +175,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 	for i := 0; i < retryTimes; i++ {
 		tryIP := utils.GetIPByInt(start, uint32(rand.Intn(int(ipRange-2))+1))
 
-		ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
+		ipUsedToPod, err := utils.GetKeyValuesWithPrefix(node.cli,usedIPPrefix)
 		if err != nil {
 			return "", ipnet, err
 		}
@@ -222,7 +183,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 		//check.
 		if _, ok := ipUsedToPod[usedIPPrefix+tryIP.String()]; !ok {
 			availableIP = tryIP.String()
-			node.putValue(usedIPPrefix+tryIP.String(), node.podname)
+			utils.PutValue(node.cli,usedIPPrefix+tryIP.String(), node.podname)
 			break
 		}
 	}
@@ -244,14 +205,14 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 func (node *NodeIPM) Delete() error {
 	//get all used ip address and try to matches it id.
 	usedIPPrefix := nodePrefix + node.hostname + "/used/"
-	ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
+	ipUsedToPod, err := utils.GetKeyValuesWithPrefix(node.cli,usedIPPrefix)
 	if err != nil {
 		return err
 	}
 
 	for k, v := range ipUsedToPod {
 		if v == node.podname {
-			err := node.deleteKey(k)
+			err := utils.DeleteKey(node.cli, k)
 			return err
 		}
 	}

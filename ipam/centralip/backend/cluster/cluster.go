@@ -15,13 +15,11 @@
 package cluster
 
 import (
-	"context"
 	"fmt"
 	"github.com/John-Lin/ovs-cni/ipam/centralip/backend/utils"
 	"github.com/coreos/etcd/clientv3"
 	"math/rand"
 	"net"
-	"time"
 )
 
 type NodeIPM struct {
@@ -39,7 +37,7 @@ func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 	var err error
 
 	node.podname = podName
-	err = node.connect(config.ETCDURL)
+	node.cli, err = utils.ConnectETCD(config)
 	if err != nil {
 		return nil, err
 	}
@@ -49,44 +47,6 @@ func New(podName string, config *utils.IPMConfig) (*NodeIPM, error) {
 		return nil, err
 	}
 	return node, nil
-}
-
-/*
-	ETCD Related
-*/
-func (node *NodeIPM) connect(etcdUrl string) error {
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{etcdUrl},
-		DialTimeout: 5 * time.Second,
-	})
-
-	node.cli = cli
-	return err
-}
-
-func (node *NodeIPM) deleteKey(prefix string) error {
-	_, err := node.cli.Delete(context.TODO(), prefix)
-	return err
-}
-func (node *NodeIPM) putValue(prefix, value string) error {
-	_, err := node.cli.Put(context.TODO(), prefix, value)
-	return err
-}
-
-func (node *NodeIPM) getKeyValuesWithPrefix(key string) (map[string]string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := node.cli.Get(ctx, key, clientv3.WithPrefix())
-	cancel()
-	if err != nil {
-		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
-	}
-
-	results := make(map[string]string)
-	for _, ev := range resp.Kvs {
-		results[string(ev.Key)] = string(ev.Value)
-	}
-
-	return results, nil
 }
 
 func (node *NodeIPM) GetGateway() (string, error) {
@@ -116,7 +76,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 	for i := 0; i < retryTimes; i++ {
 		tryIP := utils.GetIPByInt(start, uint32(rand.Intn(int(ipRange-2))+1))
 
-		ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
+		ipUsedToPod, err := utils.GetKeyValuesWithPrefix(node.cli,usedIPPrefix)
 		if err != nil {
 			return "", ipnet, err
 		}
@@ -124,7 +84,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 		//check.
 		if _, ok := ipUsedToPod[usedIPPrefix+tryIP.String()]; !ok {
 			availableIP = tryIP.String()
-			node.putValue(usedIPPrefix+tryIP.String(), node.podname)
+			utils.PutValue(node.cli, usedIPPrefix+tryIP.String(), node.podname)
 			break
 		}
 	}
@@ -146,7 +106,7 @@ func (node *NodeIPM) GetAvailableIP() (string, *net.IPNet, error) {
 func (node *NodeIPM) Delete() error {
 	//get all used ip address and try to matches it id.
 	usedIPPrefix := clusterPrefix + "used/"
-	ipUsedToPod, err := node.getKeyValuesWithPrefix(usedIPPrefix)
+	ipUsedToPod, err := utils.GetKeyValuesWithPrefix(node.cli,usedIPPrefix)
 	if err != nil {
 		return err
 	}
@@ -154,7 +114,7 @@ func (node *NodeIPM) Delete() error {
 	for k, v := range ipUsedToPod {
 		fmt.Println(k, v)
 		if v == node.podname {
-			err := node.deleteKey(k)
+			err := utils.DeleteKey(node.cli, k)
 			return err
 		}
 	}

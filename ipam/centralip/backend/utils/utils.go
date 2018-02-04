@@ -15,10 +15,15 @@
 package utils
 
 import (
+	"context"
+	"github.com/coreos/etcd/clientv3"
+	"github.com/coreos/etcd/pkg/transport"
+	"time"
 	"encoding/binary"
 	"fmt"
 	"github.com/containernetworking/plugins/pkg/ip"
 	"net"
+	"strings"
 )
 
 func PowTwo(times int) uint32 {
@@ -61,4 +66,76 @@ func GetNextIP(ipn *net.IPNet) net.IP {
 func GetIPByInt(ip net.IP, n uint32) net.IP {
 	i, _ := IpToInt(ip)
 	return IntToIP(i + n)
+}
+
+/*
+	ETCD Related
+*/
+func connectWithoutTLS(url string) (*clientv3.Client, error) {
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: 5 * time.Second,
+	})
+
+	return cli, err
+}
+
+func connectWithTLS(url, cert, key, trusted string) (*clientv3.Client, error) {
+	tlsInfo := transport.TLSInfo{
+		CertFile:      cert,
+		KeyFile:       key,
+		TrustedCAFile: trusted,
+	}
+
+	tlsConfig, err := tlsInfo.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   []string{url},
+		DialTimeout: 5 * time.Second,
+		TLS:         tlsConfig,
+	})
+
+	return cli, err
+}
+
+
+func ConnectETCD(config *IPMConfig) (*clientv3.Client, error) {
+	var cli *clientv3.Client
+	var err error
+	if strings.HasPrefix(config.ETCDURL, "https") {
+		cli, err = connectWithTLS(config.ETCDURL, config.ETCDCertFile, config.ETCDKeyFile, config.ETCDTrustedCAFileFile)
+	} else {
+		cli, err = connectWithoutTLS(config.ETCDURL)
+	}
+
+	return cli,err
+}
+
+
+func DeleteKey(cli *clientv3.Client, prefix string) error {
+	_, err := cli.Delete(context.TODO(), prefix)
+	return err
+}
+func PutValue(cli *clientv3.Client,prefix, value string) error {
+	_, err := cli.Put(context.TODO(), prefix, value)
+	return err
+}
+
+func GetKeyValuesWithPrefix(cli *clientv3.Client, key string) (map[string]string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	resp, err := cli.Get(ctx, key, clientv3.WithPrefix())
+	cancel()
+	if err != nil {
+		return nil, fmt.Errorf("Fetch etcd prefix error:%v", err)
+	}
+
+	results := make(map[string]string)
+	for _, ev := range resp.Kvs {
+		results[string(ev.Key)] = string(ev.Value)
+	}
+
+	return results, nil
 }
