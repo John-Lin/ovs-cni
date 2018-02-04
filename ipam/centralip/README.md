@@ -39,3 +39,12 @@ Those two fields is used to indicate the range of subnets you want to dispatch f
 
 ### etcdURL
 The ip address of etcd-v3 server.
+If you want to connect to etcd-v3 servier with TLS, you should also indicate the 
+location of three files, including `Certificate`, `Key` and `TrustedCA`.
+And you should use the following key to describe your location to CNI.
+```bash
+       "etcdURL": "https://127.0.0.1:2379",
+       "etcdCertFile": "/etc/ovs/certs/cert.crt",
+       "etcdKeyFile": "/etc/ovs/certs/key.pem",
+       "etcdTrustedCAFileFile": "/etc/ovs/certs/ca_cert.crt"
+```
